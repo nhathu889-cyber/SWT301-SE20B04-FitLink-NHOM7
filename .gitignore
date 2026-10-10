@@ -15,3 +15,9 @@ coverage/
 *.log
 
 FitLink/fitlink-backend/uploads/
+
+# Local presentation and spreadsheet files
+*.ppt
+*.pptx
+*.xls
+*.xlsx

@@ -38,8 +38,8 @@ export default function Step5Preview({ pt, student, onBack }) {
   const otherGymAddressText = addressFromState(state.otherGymAddress) || "—";
 
   // ===== Price estimate (FE-side) =====
-  const basePrice = state.packageSnapshot?.price ?? state.package?.price ?? 0;
-  const travelFee = state.travelFee ?? 0;
+  const basePrice = 5000;
+  const travelFee = 0;
   const discount = 0;
   const tax = 0;
   const subtotal = basePrice + travelFee - discount;

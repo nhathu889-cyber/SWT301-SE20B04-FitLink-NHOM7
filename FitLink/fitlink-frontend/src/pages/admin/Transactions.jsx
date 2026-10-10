@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { transactionService } from "@/services/transactionService";
+import axios from '@/api/axiosClient';
 import {
   FaMoneyBillWave,
   FaFilter,
@@ -19,7 +20,17 @@ const statusColors = {
 };
 
 export default function Transactions() {
-  const [statusFilter, setStatusFilter] = useState("paid");
+  const [statusFilter, setStatusFilter] = useState("pending_transfer");
+  const [confirming, setConfirming] = useState(null);
+  const [confirmError, setConfirmError] = useState('');
+  const confirmTransfer = async (transaction) => {
+    if (!window.confirm(`Đã nhận ${Number(transaction.amount).toLocaleString('vi-VN')} đ với nội dung FL${transaction._id.replace(/-/g, '').toUpperCase()}?`)) return;
+    setConfirming(transaction._id);
+    setConfirmError('');
+    try { await axios.post(`/admin/transactions/${transaction._id}/confirm-transfer`); await fetchData(); }
+    catch (error) { setConfirmError(error.response?.data?.message || 'Không xác nhận được giao dịch'); }
+    finally { setConfirming(null); }
+  };
   const [page, setPage] = useState(1);
   const limit = 10;
 
@@ -65,6 +76,7 @@ export default function Transactions() {
       <h1 className="text-3xl font-bold mb-6 text-orange-400">
         View Transactions
       </h1>
+      {confirmError && <p role="alert" className="text-red-400">{confirmError}</p>}
 
       {/* SUMMARY + FILTER */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -95,6 +107,7 @@ export default function Transactions() {
             }}
           >
             <option value="paid">Paid</option>
+            <option value="pending_transfer">Chờ xác nhận chuyển khoản</option>
             <option value="pending_gateway">Pending Gateway</option>
             <option value="initiated">Initiated</option>
             <option value="failed">Failed</option>
@@ -161,6 +174,8 @@ export default function Transactions() {
                   </td>
 
                   <td className="p-3">
+                    {t.method === 'bank_transfer' && <div className="text-xs break-all mb-2">{Number(t.amount).toLocaleString('vi-VN')} đ · FL{t._id.replace(/-/g, '').toUpperCase()}</div>}
+                    {t.status === 'pending_transfer' && t.method === 'bank_transfer' && <button disabled={confirming !== null} onClick={() => confirmTransfer(t)} className="bg-orange-600 rounded px-3 py-2 mb-2">{confirming === t._id ? 'Đang xác nhận…' : 'Đã nhận tiền'}</button>}
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
                         statusColors[t.status]

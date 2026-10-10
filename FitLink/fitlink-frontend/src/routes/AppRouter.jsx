@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "@/pages/LoginPage";
 import HomePage from "@/pages/student/HomePage";
 import PrivateRoute from "@/routes/PrivateRoute";
+import HomeRedirect from "@/routes/HomeRedirect";
 import AboutPage from "@/pages/student/AboutPage";
 import RegisterPage from "@/pages/RegisterPage";
 import NewsPage from "@/pages/student/NewsPage";
@@ -24,6 +25,7 @@ import PTProfile from "@/pages/pt/PTProfile";
 import PTDetail from "@/pages/student/PTDetail";
 import PTMessagePage from "@/pages/pt/PTMessagePage";
 import PaymentResult from "@/pages/payment/PaymentResult";
+import BankTransfer from "@/pages/payment/BankTransfer";
 import MyCalendar from "@/pages/calendar/MyCalendar";
 import PTStudents from "@/pages/pt/PTStudent";
 import PTListAdmin from "@/pages/admin/managerUser/PTList";
@@ -56,6 +58,7 @@ export default function AppRouter() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/payment/transfer/:transactionId" element={<PrivateRoute allowedRoles={["student"]}><BankTransfer /></PrivateRoute>} />
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
@@ -72,7 +75,7 @@ export default function AppRouter() {
           </PrivateRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={<HomeRedirect />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
       <Route path="/home" element={<HomePage />} />
       <Route path="/programs" element={<ProgramsPage />} />

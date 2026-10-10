@@ -72,16 +72,17 @@ export default function BookingWizard() {
 
       setPt(ptData);
       setPackages(list);
+      const selected = list.find((item) => item._id?.toLowerCase() === packageId?.toLowerCase());
 
       set({
         ptId,
-        packageId: packageId || null,
-        travelPolicy: {
-          freeRadiusKm: 6,
-          maxTravelKm: 10,
-          feePerKm: 10000,
-        },
+        packageId: selected?._id || null,
+        package: selected || null,
+        packageSnapshot: selected ? { name: selected.name, price: selected.price, currency: 'VND', totalSessions: selected.totalSessions, sessionDurationMin: selected.sessionDurationMin } : {},
+        pattern: [], slot: null, mode: null, distanceKm: null,
+        travelPolicy: ptData.travelPolicy || { freeRadiusKm: 5, maxTravelKm: 15, feePerKm: 10000 },
       });
+      if (packageId && !selected) setStep(0);
 
       setLoading(false);
     })();

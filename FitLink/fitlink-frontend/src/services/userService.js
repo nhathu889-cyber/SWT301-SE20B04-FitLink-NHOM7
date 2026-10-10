@@ -26,6 +26,7 @@ export const updateProfile = async (profileData, avatarFile = null) => {
   }
   
   const res = await axios.put('/auth/profile', formData, {
+    skipErrorToast: true,
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -46,7 +47,7 @@ export const uploadAvatar = async (avatarFile) => {
 };
 
 export const changePassword = async (passwordData) => {
-  const res = await axios.put('/auth/change-password', passwordData);
+  const res = await axios.put('/auth/change-password', passwordData, { skipErrorToast: true });
   return res.data;
 };
 

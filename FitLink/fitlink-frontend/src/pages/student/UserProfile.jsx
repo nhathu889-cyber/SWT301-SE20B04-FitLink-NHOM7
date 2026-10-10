@@ -93,6 +93,11 @@ export default function UserProfile() {
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (!['image/png', 'image/jpeg', 'image/gif', 'image/webp'].includes(file.type) || file.size > 10 * 1024 * 1024) {
+        toast.error('Chọn ảnh PNG, JPG, GIF hoặc WebP không quá 10MB.');
+        e.target.value = '';
+        return;
+      }
       setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -299,7 +304,7 @@ export default function UserProfile() {
                       <div>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="image/png,image/jpeg,image/gif,image/webp"
                           onChange={handleAvatarChange}
                           className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
                         />
@@ -320,7 +325,11 @@ export default function UserProfile() {
                 </form>
               )}
 
-              {activeTab === 'password' && (
+              {activeTab === 'password' && user?.hasPassword === false && (
+                <p className="text-gray-600">Tài khoản này chưa có mật khẩu FitLink. Nếu bạn đăng nhập bằng Google, hãy tiếp tục dùng nút đăng nhập Google. Mật khẩu Google được quản lý trong tài khoản Google.</p>
+              )}
+
+              {activeTab === 'password' && user?.hasPassword !== false && (
                 <form onSubmit={handleSubmitPassword(onSubmitPassword)} className="space-y-6 max-w-md">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">

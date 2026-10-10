@@ -38,6 +38,9 @@ export default function PaymentResult() {
         {status === 'paid' && (
           <>
             <h1 className="text-2xl font-bold text-green-600">Thanh toán thành công!</h1>
+            <button onClick={() => navigate('/training-calendar')} className="px-4 py-2 bg-orange-500 text-white rounded">
+              Xem lịch tập luyện
+            </button>
             <button
               onClick={() => navigate('/my-packages')}
               className="px-4 py-2 bg-orange-500 text-white rounded"

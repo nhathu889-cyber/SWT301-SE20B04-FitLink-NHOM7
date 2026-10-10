@@ -34,7 +34,7 @@ function AddressAutocomplete({ onSelect, placeholder = "Nhập địa chỉ đ�
     tRef.current = setTimeout(async () => {
       try {
         setLoading(true);
-        const url = new URL("https@/api.geoapify.com/v1/geocode/autocomplete");
+        const url = new URL("https://api.geoapify.com/v1/geocode/autocomplete");
         url.searchParams.set("text", q.trim());
         url.searchParams.set("format", "json");
         url.searchParams.set("limit", "6");
@@ -132,6 +132,7 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
   // Sau khi lưu thành công → mở Chip + Map
   const [savedLocation, setSavedLocation] = useState(null); // {lng, lat}
   const [saving, setSaving] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [travelFee, setTravelFee] = useState(null)
 
@@ -185,6 +186,21 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
     }
   };
 
+  const locateMe = () => {
+    if (!navigator.geolocation) { setSaveMsg("Trình duyệt không hỗ trợ định vị."); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(({ coords }) => {
+      setLng(String(coords.longitude));
+      setLat(String(coords.latitude));
+      setAddr("Vị trí hiện tại của tôi");
+      setLocating(false);
+      setSaveMsg("Đã lấy vị trí. Bấm Lưu địa chỉ để sử dụng.");
+    }, () => {
+      setLocating(false);
+      setSaveMsg("Không lấy được vị trí. Hãy cho phép định vị hoặc tìm địa chỉ và nhập tọa độ.");
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+  };
+
   // Lưu default location (yêu cầu cookie/token hợp lệ ở axiosClient)
   const handleSave = async () => {
     setSaveMsg("");
@@ -212,7 +228,25 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
 
   // Bật Chip/Next khi đã có savedLocation + đã chọn mode
   const enableChips = !!savedLocation;
-  const canNext = !!state.mode && !!savedLocation;
+  const canNext = state.mode === "atPtGym" ? !!pt?.primaryGym : !!state.mode && !!savedLocation && (state.mode !== "atClient" || (Number.isFinite(distanceKm) && state.inRange));
+
+  useEffect(() => {
+    if (state.mode !== "atClient") return;
+    if (!Number.isFinite(distanceKm)) {
+      setTravelFee(null);
+      set({ travelFee: null, inRange: false });
+      return;
+    }
+    try {
+      const fee = calculateTravelFee(distanceKm, Number(feePerKm || 0), Number(freeRadiusKm || 0), Number(maxTravelKm || Infinity));
+      setTravelFee(fee);
+      set({ travelFee: fee, inRange: true });
+    } catch {
+      setTravelFee(null);
+      set({ travelFee: null, inRange: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.mode, distanceKm, feePerKm, freeRadiusKm, maxTravelKm]);
 
   const delivery = pt?.deliveryModes || {};
   const canAtPtGym = !!delivery.atPtGym;
@@ -220,6 +254,11 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
   const canAtOtherGym = !!delivery.atOtherGym;
 
   const chooseMode = (mode) => {
+    if (mode === "atPtGym") {
+      setTravelFee(null);
+      set({ mode, ptGymAddress: pt.primaryGym, clientAddress: null, otherGymAddress: null, travelFee: 0 });
+      return;
+    }
     if (!savedLocation) return;
     const payload = {
       address: addr || "Địa chỉ mặc định",
@@ -235,7 +274,7 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
           Number(maxTravelKm || Infinity)
         );
         setTravelFee(fee);
-        set({ mode,travelFee: fee, clientAddress: null, otherGymAddress: null });
+        set({ mode,travelFee: fee, clientAddress: payload, otherGymAddress: null });
       } catch (err) {
         // Nếu vượt quá khoảng cách cho phép → không đổi mode và hiện toast
         setTravelFee(null);
@@ -260,8 +299,16 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
   return (
     <div className="space-y-4">
       <div className="text-slate-300">Chọn địa điểm</div>
+      {!savedLocation && canAtPtGym && (
+        <Chip active={state.mode === "atPtGym"} onClick={() => chooseMode("atPtGym")}>
+          Tại gym PT — {pt?.primaryGym?.address || pt?.primaryGym?.name}
+        </Chip>
+      )}
 
       {/* B1: tải default location */}
+      {state.mode === "atClient" && !canNext && (
+        <p className="text-sm text-amber-300">Cần xác định được quãng đường trong phạm vi di chuyển của PT để tiếp tục. Bạn có thể chọn tập tại gym PT.</p>
+      )}
       {loadingDefault && <div className="text-sm text-neutral-400">Đang tải vị trí mặc định…</div>}
       {!loadingDefault && defaultError && (
         <div className="text-sm text-red-400">{defaultError}</div>
@@ -271,6 +318,9 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
       {!loadingDefault && !savedLocation && (
         <div className="space-y-2">
           <AddressAutocomplete onSelect={handlePickAddress} />
+          <button onClick={locateMe} disabled={locating} className="px-4 py-2 rounded-xl border border-neutral-600 text-white">
+            {locating ? "Đang định vị…" : "Dùng vị trí hiện tại"}
+          </button>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="block text-xs text-neutral-400 mb-1">Kinh độ (lng)</label>

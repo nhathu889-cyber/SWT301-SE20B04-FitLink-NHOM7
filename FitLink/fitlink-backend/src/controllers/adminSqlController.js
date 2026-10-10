@@ -1,0 +1,15 @@
+import User from '~/models/sql/User.js'
+import PTProfile from '~/models/sql/PTProfile.js'
+import PTApprovalRequest from '~/models/sql/PTApprovalRequest.js'
+import { createNotification } from '~/services/notificationService.js'
+
+const decorate = async (requests) => { const users = await User.findAll({ where: { id: [...new Set(requests.map(x => x.userId))] } }); const profiles = await PTProfile.findAll({ where: { id: requests.map(x => x.ptProfileId) } }); const byUser = new Map(users.map(x => [x.id, x])); const byProfile = new Map(profiles.map(x => [x.id, x])); return requests.map(x => ({ ...x.toJSON(), user: byUser.get(x.userId), ptProfile: byProfile.get(x.ptProfileId) })) }
+export const userAdminSqlController = {
+  getAllUsers: async (_req, res) => res.json(await User.findAll()),
+  async blockUser(req, res) { const user = await User.findByPk(req.params.id); if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng' }); await user.update({ isActive: false }); return res.json({ message: 'Đã khóa người dùng', user }) },
+  async unlockUser(req, res) { const user = await User.findByPk(req.params.id); if (!user) return res.status(404).json({ message: 'Không tìm thấy người dùng' }); await user.update({ isActive: true }); return res.json({ message: 'Đã mở khóa người dùng', user }) },
+  async countCustomers(_req, res) { return res.json({ success: true, totalCustomers: await User.count({ where: { role: 'student' } }) }) },
+  async getAllPTRequests(_req, res) { return res.json({ success: true, data: await decorate(await PTApprovalRequest.findAll({ order: [['created_at', 'DESC']] })) }) },
+  async getPTRequestDetail(req, res) { const request = await PTApprovalRequest.findByPk(req.params.id); if (!request) return res.status(404).json({ message: 'Không tìm thấy yêu cầu' }); return res.json({ success: true, data: (await decorate([request]))[0] }) },
+  async reviewPTRequest(req, res) { const request = await PTApprovalRequest.findByPk(req.params.id); if (!request) return res.status(404).json({ message: 'Không tìm thấy yêu cầu' }); if (request.status !== 'pending') return res.status(400).json({ message: 'Yêu cầu đã được xử lý' }); const approved = req.body.action === 'approve'; if (!approved && req.body.action !== 'reject') return res.status(400).json({ message: 'action phải là approve hoặc reject' }); const logs = JSON.parse(request.logs || '[]'); logs.push({ action: req.body.action, by: req.user._id, note: req.body.reason || '', at: new Date() }); await request.update({ status: approved ? 'approved' : 'rejected', rejectReason: approved ? '' : req.body.reason || 'Không rõ lý do', reviewedById: req.user._id, reviewedAt: new Date(), logs: JSON.stringify(logs) }); if (approved) await PTProfile.update({ verified: true }, { where: { id: request.ptProfileId } }); await createNotification({ user: request.userId, type: 'system', title: approved ? 'Hồ sơ PT đã được duyệt' : 'Hồ sơ PT bị từ chối', message: approved ? 'Chúc mừng! Hồ sơ PT của bạn đã được duyệt.' : `Lý do: ${req.body.reason || 'Không rõ lý do'}` }); return res.json({ message: 'Đã xử lý yêu cầu', status: request.status }) }
+}

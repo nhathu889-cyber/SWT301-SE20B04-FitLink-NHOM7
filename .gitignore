@@ -1,0 +1,17 @@
+FitLink/fitlink-backend-server.log
+FitLink/fitlink-backend-server.error.log
+FitLink.zip
+
+# Local tools and generated files
+.excel-tools/
+.slide-tools/
+node_modules/
+dist/
+coverage/
+.git_disabled/
+.env
+.env.*
+!.env.example
+*.log
+
+FitLink/fitlink-backend/uploads/

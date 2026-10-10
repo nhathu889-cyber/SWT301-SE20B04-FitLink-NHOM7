@@ -14,6 +14,13 @@ const normalizePhone = (phone) =>
     .replace(/[\s.-]/g, "")
     .replace(/^(\+84|84)/, "0");
 
+const loginErrorMessage = (error, fallback) => {
+  if (error?.request && !error.response) {
+    return "Không thể kết nối máy chủ. Vui lòng thử lại sau.";
+  }
+  return error?.response?.data?.message || fallback;
+};
+
 const schema = yup.object().shape({
   phone: yup
     .string()
@@ -56,7 +63,7 @@ export default function LoginPage() {
           break;
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Đăng nhập thất bại");
+      toast.error(loginErrorMessage(err, "Đăng nhập thất bại"));
     }
   };
 
@@ -81,7 +88,7 @@ export default function LoginPage() {
           break;
       }
     } catch (err) {
-      toast.error(err?.response?.data?.message || "Đăng nhập Google thất bại");
+      toast.error(loginErrorMessage(err, "Đăng nhập Google thất bại"));
     }
   };
 

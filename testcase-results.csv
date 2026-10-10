@@ -1,0 +1,25 @@
+﻿Test Case ID,Status,Evidence / limitations
+TC_AUTH_001,Pending,registration requires email confirmation; complete lifecycle not executed
+TC_AUTH_002,Passed,invalid registration inputs are rejected by validation; tested validation middleware in isolation; registration/start wiring not verified.
+TC_AUTH_003,Passed,duplicate email is rejected before registration writes
+TC_AUTH_004,Passed,"valid phone/password issues HttpOnly session without password; adapted to phone login and HttpOnly cookie (application contract), not email login."
+TC_AUTH_005,Passed,"wrong password and invalid phone/missing password issue no session; adapted to phone login and HttpOnly cookie (application contract), not email login."
+TC_AUTH_006,Pending,full profile request covered by separate API tests; not mapped to this unit run
+TC_AUTH_007,Passed,missing session is 401 and wrong role is 403
+TC_AUTH_008,Passed,malformed and expired tokens cannot access protected data
+TC_BOOK_001,Passed,"create booking stores owner, package and requested schedule"
+TC_BOOK_002,Passed,missing or malformed booking fields do not persist
+TC_BOOK_003,Failed,Second exclusive booking accepted (HTTP 200); creation controller lacks conflict check.
+TC_BOOK_004,Pending,booking read/update/cancel API not implemented
+TC_BOOK_005,Pending,booking read/update/cancel API not implemented
+TC_BOOK_006,Pending,booking read/update/cancel API not implemented
+TC_BOOK_007,Pending,booking read/update/cancel API not implemented
+TC_BOOK_008,Pending,booking read/update/cancel API not implemented
+TC_SCH_001,Passed,valid future schedule generates matching time ranges
+TC_SCH_002,Failed,Malformed startDate caused unbounded loop; isolated probe terminated after 1500ms.
+TC_SCH_003,Failed,slot.end equal/before start is accepted; generator derives end from duration and ignores supplied end.
+TC_SCH_004,Failed,Past schedule accepted (HTTP 201) when carryForward=false.
+TC_SCH_005,Failed,Repeated overlapping schedule accepted (HTTP 201); generation controller lacks overlap check.
+TC_SCH_006,Pending,schedule time update/read contract is unavailable; status update is a different operation
+TC_SCH_007,Pending,schedule time update/read contract is unavailable; status update is a different operation
+TC_SCH_008,Pending,schedule time update/read contract is unavailable; status update is a different operation

@@ -1,0 +1,32 @@
+import 'dotenv/config'
+
+export const env = {
+  MSSQL_SERVER: process.env.MSSQL_SERVER || 'localhost',
+  MSSQL_PORT: Number(process.env.MSSQL_PORT || 1433),
+  MSSQL_DATABASE: process.env.MSSQL_DATABASE || 'FitLink',
+  MSSQL_USER: process.env.MSSQL_USER,
+  MSSQL_PASSWORD: process.env.MSSQL_PASSWORD,
+  MSSQL_ENCRYPT: process.env.MSSQL_ENCRYPT === 'true',
+  MSSQL_TRUST_SERVER_CERTIFICATE: process.env.MSSQL_TRUST_SERVER_CERTIFICATE !== 'false',
+  MSSQL_INSTANCE_NAME: process.env.MSSQL_INSTANCE_NAME,
+  MSSQL_INTEGRATED_SECURITY: process.env.MSSQL_INTEGRATED_SECURITY === 'true',
+  APP_HOST: process.env.APP_HOST,
+  APP_PORT: process.env.APP_PORT,
+  AUTHOR: process.env.AUTHOR,
+  ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET,
+  REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET,
+  CLIENT_URL: process.env.CLIENT_URL,
+  GG_CLIENT_ID: process.env.GG_CLIENT_ID,
+  PAYOS_CLIENT_ID: process.env.PAYOS_CLIENT_ID,
+  PAYOS_API_KEY: process.env.PAYOS_API_KEY,
+  PAYOS_CHECKSUM_KEY: process.env.PAYOS_CHECKSUM_KEY,
+  EMAIL_USER: process.env.EMAIL_USER,
+  EMAIL_PASS: process.env.EMAIL_PASS,
+  EMAIL_FROM: process.env.EMAIL_FROM,
+  IS_SERCURE_COOKIE: process.env.IS_SERCURE_COOKIE === 'true',
+  COOKIE_SAMESITE: process.env.COOKIE_SAMESITE || 'lax',
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME,
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY,
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET,
+  PLATFORM_FEE_PERCENT: process.env.PLATFORM_FEE_PERCENT || 20
+}

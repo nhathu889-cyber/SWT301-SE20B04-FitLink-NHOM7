@@ -28,7 +28,7 @@ export default function MapD({ center, ptLocation }) {
   useEffect(() => {
     const map = new maplibregl.Map({
       container: mapContainer.current,
-      style: `https@/api.maptiler.com/maps/streets/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`,
+      style: `https://api.maptiler.com/maps/streets/style.json?key=${import.meta.env.VITE_MAPTILER_KEY}`,
       center: [center.lng, center.lat],
       zoom: 16,
     });
@@ -44,6 +44,7 @@ export default function MapD({ center, ptLocation }) {
     mapRef.current = map;
 
     return () => {
+      mapRef.current = null;
       map.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -59,6 +60,9 @@ export default function MapD({ center, ptLocation }) {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    setDistanceKm(null);
+    setDurationMin(null);
+    set({ distanceKm: null, durationMin: null });
 
     if (centerMarkerRef.current) {
       centerMarkerRef.current.setLngLat([center.lng, center.lat]);
@@ -112,6 +116,9 @@ export default function MapD({ center, ptLocation }) {
   const drawRoute = async (latNum, lngNum) => {
     const map = mapRef.current;
     if (!map) return;
+    setDistanceKm(null);
+    setDurationMin(null);
+    set({ distanceKm: null, durationMin: null });
 
     // dọn cũ
     clearRoute();
@@ -133,7 +140,12 @@ export default function MapD({ center, ptLocation }) {
 
       const route = data?.routes?.[0];
       if (!route?.geometry) throw new Error("No route found");
+      if (!Number.isFinite(route.distance) || route.distance < 0) throw new Error("Invalid route distance");
 
+      if (!map.isStyleLoaded()) {
+        await new Promise(resolve => map.once('load', resolve));
+      }
+      if (mapRef.current !== map) return;
       map.addSource("route", {
         type: "geojson",
         data: {
@@ -167,6 +179,7 @@ export default function MapD({ center, ptLocation }) {
       set({ distanceKm:(route.distance || 0) / 1000, durationMin:(route.duration || 0) / 60 });
       setError("");
     } catch (err) {
+      if (mapRef.current !== map) return;
       console.error(err);
       setError("Không tìm thấy tuyến đường phù hợp.");
 

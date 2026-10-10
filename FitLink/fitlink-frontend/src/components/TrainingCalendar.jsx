@@ -69,7 +69,13 @@ const TrainingCalendar = ({ role = "student" }) => {
   const loadPackages = async () => {
     try {
       const res = await fetchStudentPackages();
-      setPackages(res.data || []);
+      const items = res.data || [];
+      setPackages(items);
+      const first = items.find((item) => item.status === "active") || items[0];
+      if (first) {
+        setSelectedPackage(first);
+        setExpandedPT(first.pt?.name || first.pt?.email?.split("@")[0] || "PT");
+      }
     } catch (err) {
       console.error("❌ Lỗi khi tải gói tập:", err);
     }
@@ -118,6 +124,10 @@ const TrainingCalendar = ({ role = "student" }) => {
       }));
 
       setEvents(formatted);
+      if (formatted.length) {
+        const upcoming = formatted.find((event) => event.end >= new Date());
+        setCurrentDate((upcoming || formatted[0]).start);
+      }
     } catch (err) {
       console.error("❌ Lỗi khi tải lịch tập:", err);
     }
@@ -269,7 +279,7 @@ const TrainingCalendar = ({ role = "student" }) => {
       {/* Sidebar */}
       <div className="w-80 bg-white border-r p-5">
         <button
-          onClick={() => navigate("/")}
+          onClick={() => navigate(user?.role === "pt" ? "/pt" : user?.role === "admin" ? "/admin" : "/home")}
           className="flex items-center gap-2 mb-5 px-3 py-2 rounded-lg bg-gray-100 hover:bg-blue-50"
         >
           <ArrowLeft size={18} />
@@ -279,7 +289,10 @@ const TrainingCalendar = ({ role = "student" }) => {
         <h2 className="text-xl font-semibold mb-4">Danh sách PT & gói tập</h2>
 
         {packages.length === 0 ? (
-          <p>Chưa có gói tập.</p>
+          <div className="space-y-3">
+            <p>Chưa có gói tập đã kích hoạt. Sau khi đặt gói và thanh toán thành công, lịch tập sẽ xuất hiện tại đây.</p>
+            <button onClick={() => navigate("/list-pt")} className="px-3 py-2 rounded-lg bg-orange-500 text-white">Chọn PT và đặt gói</button>
+          </div>
         ) : (
           Object.entries(groupPackagesByPT(packages)).map(([ptName, list]) => (
             <div key={ptName} className="mb-4">

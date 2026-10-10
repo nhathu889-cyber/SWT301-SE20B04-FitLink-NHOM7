@@ -13,6 +13,13 @@ const normalizePhone = (phone) =>
     .replace(/[\s.-]/g, '')
     .replace(/^(\+84|84)/, '0');
 
+const registrationErrorMessage = (error, fallback) => {
+  if (!error?.response) {
+    return 'Không kết nối được máy chủ đăng ký. Vui lòng kiểm tra backend và kết nối mạng rồi thử lại.';
+  }
+  return error.response.data?.message || fallback;
+};
+
 const schema = yup.object().shape({
   name: yup.string().required('Name is required').min(2, 'Name must be at least 2 characters'),
   email: yup
@@ -42,7 +49,6 @@ export default function RegisterPage() {
   const {
     register: registerStudent,
     handleSubmit: handleSubmitStudent,
-    getValues: getValuesStudent,
     formState: { errors: errorsStudent, isSubmitting: isSubmittingStudent }
   } = useForm({ resolver: yupResolver(schema) });
 
@@ -54,6 +60,8 @@ export default function RegisterPage() {
 
   // email countdown (Student)
   const [emailSent, setEmailSent] = React.useState(false);
+  const [pendingRegistration, setPendingRegistration] = React.useState(null);
+  const [resending, setResending] = React.useState(false);
   const [secondsLeft, setSecondsLeft] = React.useState(180);
   const [resendCooldown, setResendCooldown] = React.useState(0);
 
@@ -80,21 +88,22 @@ export default function RegisterPage() {
         navigate('/login');
         return;
       }
+      setPendingRegistration({ name, phone, password, email, role: 'student' });
       setEmailSent(true);
       setSecondsLeft(180);
       setResendCooldown(60);
       toast.success('Verification email sent. Please check your inbox within 3 minutes.');
     } catch (err) {
-      toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Registration failed');
+      toast.error(registrationErrorMessage(err, 'Đăng ký thất bại. Vui lòng thử lại.'));
     }
   };
 
   // resend Student
   const handleResend = async () => {
-    if (resendCooldown > 0) return;
+    if (resendCooldown > 0 || resending || !pendingRegistration) return;
+    setResending(true);
     try {
-      const { name, phone, password, email } = getValuesStudent();
-      const res = await registerStart({ name, phone, password, email, role: 'student' });
+      const res = await registerStart(pendingRegistration);
       if (res?.requiresVerification === false) {
         toast.success(res.message || 'Account created successfully. Please sign in.');
         navigate('/login');
@@ -104,7 +113,9 @@ export default function RegisterPage() {
       setResendCooldown(60);
       toast.success('Verification email re-sent');
     } catch (err) {
-      toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Re-send failed');
+      toast.error(registrationErrorMessage(err, 'Không gửi lại được email xác nhận. Vui lòng thử lại.'));
+    } finally {
+      setResending(false);
     }
   };
 
@@ -112,10 +123,18 @@ export default function RegisterPage() {
   const onSubmitPT = async ({ name, phone, password, email }) => {
     try {
       const res = await registerStart({ name, phone, password, email, role: 'pt' });
-      toast.success(res?.message || 'Registered as PT. Please complete your profile in Dashboard and submit for approval.');
-      navigate('/login');
+      if (res?.requiresVerification === false) {
+        toast.success(res.message || 'Account created successfully. Please sign in.');
+        navigate('/login');
+        return;
+      }
+      setPendingRegistration({ name, phone, password, email, role: 'pt' });
+      setEmailSent(true);
+      setSecondsLeft(180);
+      setResendCooldown(60);
+      toast.success('Verification link sent. Please check your inbox and Spam folder.');
     } catch (err) {
-      toast.error(err?.response?.data?.error || err?.response?.data?.message || 'Registration failed');
+      toast.error(registrationErrorMessage(err, 'Đăng ký thất bại. Vui lòng thử lại.'));
     }
   };
 
@@ -130,10 +149,38 @@ export default function RegisterPage() {
     setAnimating(true);
     setTimeout(() => {
       setRole(next);
-      if (next === 'pt') setEmailSent(false); // ẩn UI email student khi chuyển sang PT
       setAnimating(false);
     }, 250);
   };
+
+  const verificationPanel = (
+<div className="space-y-4">
+                  <div className="rounded-lg bg-black/30 border border-[#2a2a2a] p-4">
+                    <p className="text-gray-200">
+                      A verification link (not an OTP code) was sent to <b>{pendingRegistration?.email}</b>. Check your Inbox and Spam folder within <b className="text-[#ffb380]">3 minutes</b>.
+                    </p>
+                    <p className="text-gray-300 mt-1">
+                      Link expires in: <b className="text-[#ffb380]">{fmt(secondsLeft)}</b>
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleResend}
+                    disabled={resendCooldown > 0 || resending}
+                    className="w-full rounded-lg bg-[#ff4d00] hover:bg-[#ff661a] text-white font-semibold py-3 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    {resending ? 'Sending...' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend verification email'}
+                  </button>
+
+                  <p className="text-sm text-center text-gray-400">
+                    After verifying your email, you can{' '}
+                    <Link to="/login" className="text-[#ff4d00] font-medium hover:underline">
+                      sign in
+                    </Link>.
+                  </p>
+                </div>
+  );
 
   return (
     <div className="min-h-screen w-full bg-[#0e0e0e] text-white">
@@ -173,7 +220,7 @@ export default function RegisterPage() {
             {/* Left / Hero */}
             <div className="relative hidden md:flex flex-col justify-end rounded-2xl overflow-hidden bg-[#111] shadow-2xl border border-[#1f1f1f]">
               <img
-                src="/as/fitness-register.jpg"
+                src="/poster2.jpg"
                 alt="Gym"
                 className="absolute inset-0 w-full h-full object-cover opacity-60"
               />
@@ -202,7 +249,7 @@ export default function RegisterPage() {
                 <p className="text-gray-400 mt-1">Default registration role is Student.</p>
               </div>
 
-              {!emailSent ? (
+              {!(emailSent && pendingRegistration?.role === 'student') ? (
                 <form onSubmit={handleSubmitStudent(onSubmitStudent)} className="space-y-4">
                   <Input label="Full name" name="name" register={registerStudent} errors={errorsStudent} />
                   <Input label="Email" name="email" register={registerStudent} errors={errorsStudent} />
@@ -224,32 +271,7 @@ export default function RegisterPage() {
                   </p>
                 </form>
               ) : (
-                <div className="space-y-4">
-                  <div className="rounded-lg bg-black/30 border border-[#2a2a2a] p-4">
-                    <p className="text-gray-200">
-                      We’ve sent a verification email. Please check your inbox within <b className="text-[#ffb380]">3 minutes</b>.
-                    </p>
-                    <p className="text-gray-300 mt-1">
-                      Link expires in: <b className="text-[#ffb380]">{fmt(secondsLeft)}</b>
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleResend}
-                    disabled={resendCooldown > 0}
-                    className="w-full rounded-lg bg-[#ff4d00] hover:bg-[#ff661a] text-white font-semibold py-3 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend verification email'}
-                  </button>
-
-                  <p className="text-sm text-center text-gray-400">
-                    After verifying your email, you can{' '}
-                    <Link to="/login" className="text-[#ff4d00] font-medium hover:underline">
-                      sign in
-                    </Link>.
-                  </p>
-                </div>
+                verificationPanel
               )}
             </div>
           </section>
@@ -264,6 +286,7 @@ export default function RegisterPage() {
                   After registering, complete your profile in the Dashboard and submit for Admin approval.
                 </p>
               </div>
+              {emailSent && pendingRegistration?.role === 'pt' ? verificationPanel : (
               <form onSubmit={handleSubmitPT(onSubmitPT)} className="space-y-4">
                 <Input label="Full name" name="name" register={registerPT} errors={errorsPT} />
                 <Input label="Email" name="email" register={registerPT} errors={errorsPT} />
@@ -282,6 +305,7 @@ export default function RegisterPage() {
                 </button>
 
               </form>
+              )}
             </div>
 
             {/* Right / PT Profile Basic (replaces the hero) */}

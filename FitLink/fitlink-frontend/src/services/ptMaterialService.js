@@ -1,6 +1,7 @@
 import axios from "axios";
+import { backendUrl } from '@/utils/backendUrl';
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:4000";
+const API_BASE = backendUrl(import.meta.env.VITE_API_URL, 'http://localhost:3000');
 const MATERIALS_URL = `${API_BASE}/api/pt/materials`;
 
 export async function getMyMaterials(params = {}) {

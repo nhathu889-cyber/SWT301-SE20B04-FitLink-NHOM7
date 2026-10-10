@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { backendUrl } from '@/utils/backendUrl';
 import { toast } from 'react-toastify';
 // import { getToken } from '~/auth/token';
 
@@ -13,7 +14,7 @@ import { toast } from 'react-toastify';
 // });
 
 const axiosClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  baseURL: backendUrl(import.meta.env.VITE_API_BASE_URL, 'http://localhost:3000/api'),
   withCredentials: true // 💡 Phải có dòng này để gửi cookie
 });
 

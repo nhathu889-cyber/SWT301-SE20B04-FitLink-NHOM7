@@ -5,7 +5,7 @@
 FitLink la nen tang ket noi `student` voi `PT` (personal trainer), gom 2 phan:
 
 - `fitlink-frontend`: React + Vite, giao dien cho hoc vien, PT va admin.
-- `fitlink-backend`: Express + MongoDB/Mongoose, phu trach auth, booking, payment, chat realtime, thong bao va quan ly du lieu.
+- `fitlink-backend`: Express + SQL Server/Sequelize, phu trach auth, booking, payment, chat realtime, thong bao va quan ly du lieu.
 
 Muc tieu nghiep vu chinh:
 
@@ -39,7 +39,7 @@ Cac nhom chuc nang chinh trong `fitlink-frontend/src`:
 
 Backend dung:
 
-- `Mongoose` de model hoa du lieu
+- `Sequelize` de anh xa 20 bang trong SQL Server; khoa chinh va khoa ngoai dung UUID
 - `Socket.IO` cho chat va notification realtime
 - `PayOS` cho thanh toan
 - `Cloudinary/multer` cho upload tai lieu
@@ -194,7 +194,7 @@ Cum du lieu tai chinh cho PT:
 
 - Model du lieu kha ro domain, tach duoc `user`, `profile`, `package`, `booking`, `session`, `transaction`.
 - Da dung `snapshot` trong `Booking`, giup lich su don hang khong bi troi theo thay doi moi cua `Package` hay dia chi.
-- Da co index cho search, geo va cac query chinh nhu user, package, session, transaction.
+- SQL Server co khoa ngoai va unique index; cac truong cau truc nhu lich lam viec va toa do duoc luu JSON trong NVARCHAR.
 - Chat va notification da tach thanh module rieng, de mo rong realtime.
 
 ### Diem can luu y
@@ -202,8 +202,6 @@ Cum du lieu tai chinh cho PT:
 - Frontend dang ton tai 2 lop goi API cho chat: `src/api/messageApi.js` va `src/services/messageService.js`. Dieu nay de gay lech response shape va kho maintain.
 - `messageApi.js` dung bien moi truong `VITE_API_URL`, trong khi nhieu service khac dung `VITE_API_BASE_URL`. Neu config khong dong nhat, chat co the loi rieng.
 - Co 2 luong chat FE: `ChatWindow.jsx` dung event moi (`joinRoom`, `sendMessage`, `receiveMessage`), con `ChatBox.jsx` dung event cu (`join_room`, `send_message`, `receive_message`). Day la dau hieu code chat dang bi song song 2 phien ban.
-- `Notification` schema chi cho phep type `message`, nhung `messageController.js` co luc tao notification voi type `chat`. Neu chay vao nhanh nay, du lieu thong bao co nguy co fail validate.
-- File `src/models/index.js` dang export mot so model khong ton tai trong thu muc models hien tai. Neu file nay duoc import thuc te, no co the gay vo build/runtime.
 
 ## 6. Ghi chu rieng cho `messageApi.js`
 
@@ -219,3 +217,7 @@ Ve mat data:
 - backend se tu tim/tao `Chat`, sau do tao `Message`
 
 Neu tiep tuc dung kien truc hien tai, nen chon 1 lop API duy nhat cho chat de tranh trung lap.
+
+## SQL Server
+
+Xem `fitlink-backend/README.md` de cau hinh, migrate schema, seed va chay kiem thu SQL. Runtime khong con database demo trong bo nho. Script migration tao/cap nhat schema, khong tu dong sao chep du lieu tu he thong cu.

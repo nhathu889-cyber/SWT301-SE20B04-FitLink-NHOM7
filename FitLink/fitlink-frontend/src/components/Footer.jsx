@@ -12,8 +12,8 @@ export default function Footer() {
             <span className="text-orange-500">.</span>
           </h3>
           <p className="mt-3 max-w-xs text-sm leading-7 text-slate-400">
-            Nền tảng kết nối bạn với huấn luyện viên cá nhân, lộ trình tập luyện
-            và dinh dưỡng khoa học để đạt được body mơ ước.
+            Connect with personal trainers and discover training programs
+            and nutrition guidance to reach your fitness goals.
           </p>
           <div className="mt-5 flex gap-3 text-slate-300">
             {/* Facebook */}
@@ -33,27 +33,27 @@ export default function Footer() {
 
         {/* Column 2: Programs */}
         <div>
-          <h4 className="mb-4 text-sm font-semibold uppercase tracking-[0.22em] text-white/90">Chương trình</h4>
+          <h4 className="mb-4 text-sm font-semibold uppercase tracking-[0.22em] text-white/90">Programs</h4>
           <ul className="space-y-2 text-sm">
-            <li><a href="/programs" className="hover:text-orange-300">Giảm mỡ toàn thân</a></li>
-            <li><a href="/programs" className="hover:text-orange-300">Tăng cơ &amp; sức mạnh</a></li>
-            <li><a href="/programs" className="hover:text-orange-300">Gói Online Coaching</a></li>
+            <li><a href="/programs" className="hover:text-orange-300">Full Body Fat Loss</a></li>
+            <li><a href="/programs" className="hover:text-orange-300">Muscle &amp; Strength</a></li>
+            <li><a href="/programs" className="hover:text-orange-300">Online Coaching</a></li>
           </ul>
         </div>
 
         {/* Column 3: Support */}
         <div>
-          <h4 className="mb-4 text-sm font-semibold uppercase tracking-[0.22em] text-white/90">Hỗ trợ</h4>
+          <h4 className="mb-4 text-sm font-semibold uppercase tracking-[0.22em] text-white/90">Support</h4>
           <ul className="space-y-2 text-sm">
-            <li><a href="/contact" className="hover:text-orange-300">Liên hệ &amp; đặt lịch</a></li>
-            <li><a href="/pricing" className="hover:text-orange-300">Bảng giá &amp; gói tập</a></li>
-            <li><a href="#" className="hover:text-orange-300">Câu hỏi thường gặp</a></li>
+            <li><a href="/contact" className="hover:text-orange-300">Contact &amp; Booking</a></li>
+            <li><a href="/pricing" className="hover:text-orange-300">Pricing &amp; Packages</a></li>
+            <li><a href="#" className="hover:text-orange-300">Frequently Asked Questions</a></li>
           </ul>
         </div>
 
         {/* Column 4: Contact */}
         <div>
-          <h4 className="mb-4 text-sm font-semibold uppercase tracking-[0.22em] text-white/90">Thông tin liên hệ</h4>
+          <h4 className="mb-4 text-sm font-semibold uppercase tracking-[0.22em] text-white/90">Contact Information</h4>
           <ul className="space-y-2 text-sm">
             <li className="flex items-center gap-2">
               <span>📞</span> 1900 888 999
@@ -62,7 +62,7 @@ export default function Footer() {
               <span>✉️</span> support@fitlink.vn
             </li>
             <li className="flex items-center gap-2">
-              <span>📍</span>  Việt Nam
+              <span>📍</span> Vietnam
             </li>
           </ul>
         </div>

@@ -401,6 +401,16 @@ const statements = [
    )`
 ]
 
+statements.push(
+  `ALTER TABLE packages ALTER COLUMN pt_id UNIQUEIDENTIFIER NULL`,
+  `ALTER TABLE transactions ALTER COLUMN pt_id UNIQUEIDENTIFIER NULL`,
+  `ALTER TABLE student_packages ALTER COLUMN pt_id UNIQUEIDENTIFIER NULL`,
+  `IF COL_LENGTH(N'packages', N'gym_name') IS NULL
+   ALTER TABLE packages ADD gym_name NVARCHAR(120) NULL`,
+  `IF COL_LENGTH(N'packages', N'gym_address') IS NULL
+   ALTER TABLE packages ADD gym_address NVARCHAR(500) NULL`
+)
+
 try {
   await sequelize.authenticate()
   for (const statement of statements) await sequelize.query(statement)

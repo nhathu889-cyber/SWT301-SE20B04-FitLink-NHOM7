@@ -7,6 +7,7 @@ export default function PaymentResult() {
   const [sp] = useSearchParams()
   const navigate = useNavigate()
   const [status, setStatus] = useState('checking')
+  const [destination, setDestination] = useState('/training-calendar')
   const orderCode = sp.get('orderCode')
   const payment = sp.get('payment')
 
@@ -17,6 +18,7 @@ export default function PaymentResult() {
         try {
           const res = await confirmPayment(orderCode)
           const s = res?.data?.status
+          setDestination(res?.data?.destination || '/training-calendar')
           if (s === 'paid') setStatus('paid')
           else if (s === 'cancelled') setStatus('cancelled')
           else setStatus('pending')
@@ -38,8 +40,8 @@ export default function PaymentResult() {
         {status === 'paid' && (
           <>
             <h1 className="text-2xl font-bold text-green-600">Thanh toán thành công!</h1>
-            <button onClick={() => navigate('/training-calendar')} className="px-4 py-2 bg-orange-500 text-white rounded">
-              Xem lịch tập luyện
+            <button onClick={() => navigate(destination)} className="px-4 py-2 bg-orange-500 text-white rounded">
+              Mở gói tập
             </button>
             <button
               onClick={() => navigate('/my-packages')}

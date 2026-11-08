@@ -14,7 +14,9 @@ import {
 import { useState } from "react";
 
 const menuItems = [
+  { label: "Gym Packages", icon: <FaBoxOpen />, to: "/admin/gym-packages" },
   { label: "Dashboard", icon: <FaTachometerAlt />, to: "/admin" },
+  { label: "Bookings", icon: <FaCalendarAlt />, to: "/admin/bookings" },
   {
     label: "User Management",
     icon: <FaUsers />,
@@ -25,7 +27,7 @@ const menuItems = [
     ],
   },
   {
-    label: "View Transactions",
+    label: "Payment Confirmations",
     icon: <FaReceipt />,
     to: "/admin-transactions",
   },
@@ -36,7 +38,7 @@ const menuItems = [
     to: "/admin/send-notification",
   },
   {
-    label: "Payout Requests",
+    label: "PT Withdrawals",
     icon: <FaMoneyCheckAlt />,
     subMenu: [
       { label: "All", to: "/admin/payouts" },

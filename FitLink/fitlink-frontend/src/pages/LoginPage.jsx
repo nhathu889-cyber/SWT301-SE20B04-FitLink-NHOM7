@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -14,6 +14,14 @@ const normalizePhone = (phone) =>
     .replace(/[\s.-]/g, "")
     .replace(/^(\+84|84)/, "0");
 
+const rememberedPhoneKey = 'fitlink.rememberedPhone';
+const rememberedLogin = () => {
+  try {
+    const phone = localStorage.getItem(rememberedPhoneKey) || '';
+    return { phone: /^0\d{9}$/.test(phone) ? phone : '', password: '', rememberMe: /^0\d{9}$/.test(phone) };
+  } catch { return { phone: '', password: '', rememberMe: false }; }
+};
+
 const loginErrorMessage = (error, fallback) => {
   if (error?.request && !error.response) {
     return "Không thể kết nối máy chủ. Vui lòng thử lại sau.";
@@ -22,6 +30,7 @@ const loginErrorMessage = (error, fallback) => {
 };
 
 const schema = yup.object().shape({
+  rememberMe: yup.boolean().default(false),
   phone: yup
     .string()
     .transform((value) => normalizePhone(value))
@@ -37,15 +46,51 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
+    getValues,
     formState: { errors, isSubmitting },
-  } = useForm({ resolver: yupResolver(schema) });
+  } = useForm({ resolver: yupResolver(schema), defaultValues: rememberedLogin() });
 
   const navigate = useNavigate();
   const { setUser, refreshUser } = useAuth();
+  const supportsSavedPasswords = typeof window !== 'undefined' && 'PasswordCredential' in window && !!navigator.credentials;
 
-  const onSubmit = async ({ phone, password }) => {
+  useEffect(() => {
+    if (!supportsSavedPasswords || !getValues('rememberMe')) return;
+    let active = true;
+    const initialPhone = getValues('phone');
+    navigator.credentials.get({ password: true, mediation: 'silent' }).then(credential => {
+      if (active && getValues('rememberMe') && credential?.type === 'password' && normalizePhone(credential.id) === initialPhone && getValues('phone') === initialPhone && !getValues('password')) {
+        setValue('password', credential.password);
+      }
+    }).catch(() => { /* Native autofill remains available when silent access is blocked. */ });
+    return () => { active = false; };
+  }, [supportsSavedPasswords, getValues, setValue]);
+
+  const useSavedPassword = async () => {
     try {
-      await login(phone, password);
+      const credential = await navigator.credentials.get({ password: true, mediation: 'required' });
+      if (credential?.type === 'password' && /^0\d{9}$/.test(normalizePhone(credential.id))) {
+        setValue('phone', normalizePhone(credential.id), { shouldValidate: true });
+        setValue('password', credential.password, { shouldValidate: true });
+        setValue('rememberMe', true);
+      } else if (credential) toast.info('Please choose a saved login that uses your phone number.');
+      else toast.info('No saved login selected. Sign in once and save your password in the browser.');
+    } catch { toast.info('Use the browser’s password manager to select your saved login.'); }
+  };
+
+  const onSubmit = async ({ phone, password, rememberMe }) => {
+    try {
+      await login(phone, password, rememberMe);
+      if (rememberMe && supportsSavedPasswords) {
+        try {
+          await navigator.credentials.store(new window.PasswordCredential({ id: normalizePhone(phone), password }));
+        } catch { /* Declining password storage must not prevent successful login. */ }
+      }
+      try {
+        if (rememberMe) localStorage.setItem(rememberedPhoneKey, normalizePhone(phone));
+        else localStorage.removeItem(rememberedPhoneKey);
+      } catch { /* Browser storage restrictions must not prevent sign-in. */ }
       const profile = await refreshUser();
       setUser(profile);
       toast.success("Đăng nhập thành công!");
@@ -92,7 +137,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleError = () => toast.error("Login Failed");
+  const handleError = () => toast.error("Không thể kết nối Google. Hãy kiểm tra cấu hình OAuth và thử lại.");
 
   return (
     <div className="min-h-screen bg-[#0e0e0e] text-white font-sans">
@@ -141,15 +186,20 @@ export default function LoginPage() {
             </p>
 
             <form
+              id="fitlink-login"
+              autoComplete="on"
               className="mt-8 flex flex-col space-y-5"
               onSubmit={handleSubmit(onSubmit)}
             >
               <div>
-                <label className="block text-sm font-medium mb-2 text-gray-300">
+                <label htmlFor="login-phone" className="block text-sm font-medium mb-2 text-gray-300">
                   Phone number
                 </label>
                 <input
-                  type="text"
+                  id="login-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="username"
                   placeholder="0xxxxxxxxx"
                   {...register("phone")}
                   className="w-full rounded-lg border border-[#333] bg-[#0e0e0e] px-4 py-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-[#ff4d00] outline-none"
@@ -162,11 +212,13 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-gray-300">
+                <label htmlFor="login-password" className="block text-sm font-medium mb-2 text-gray-300">
                   Password
                 </label>
                 <input
+                  id="login-password"
                   type="password"
+                  autoComplete="current-password"
                   placeholder="••••••"
                   {...register("password")}
                   className="w-full rounded-lg border border-[#333] bg-[#0e0e0e] px-4 py-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-[#ff4d00] outline-none"
@@ -182,6 +234,11 @@ export default function LoginPage() {
                 <label className="inline-flex items-center gap-2">
                   <input
                     type="checkbox"
+                    {...register("rememberMe", { onChange: event => {
+                      if (!event.target.checked) {
+                        try { localStorage.removeItem(rememberedPhoneKey); } catch { /* Storage may be disabled. */ }
+                      }
+                    } })}
                     className="rounded border-gray-500 bg-transparent"
                   />
                   Remember me
@@ -201,6 +258,8 @@ export default function LoginPage() {
               >
                 {isSubmitting ? "Signing in..." : "Sign in"}
               </button>
+
+              {supportsSavedPasswords && <button type="button" disabled={isSubmitting} onClick={useSavedPassword} className="text-sm text-orange-400 hover:underline disabled:opacity-50">Use saved password</button>}
 
               {/* Divider */}
               <div className="flex items-center gap-4">

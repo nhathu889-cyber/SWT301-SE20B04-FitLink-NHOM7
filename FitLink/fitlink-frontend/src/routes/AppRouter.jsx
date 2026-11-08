@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "@/pages/LoginPage";
+import SendNotification from "@/pages/admin/SendNotification";
+import LogoutPage from "@/pages/LogoutPage";
 import HomePage from "@/pages/student/HomePage";
 import PrivateRoute from "@/routes/PrivateRoute";
 import HomeRedirect from "@/routes/HomeRedirect";
@@ -51,12 +53,24 @@ import PTFeedback from "@/pages/pt/PTFeedbackPage";
 import PTApprovalPage from "@/pages/pt/PTApprovalPage";
 import MyPackage from "@/components/MyPackage";
 import Transactions from "@/pages/admin/Transactions";
+import GymPackagesPage from "@/pages/GymPackagesPage";
+import MyBookings from "@/pages/student/MyBookings";
+import PTBookingRequests from "@/pages/pt/PTBookingRequests";
+import AdminBookings from "@/pages/admin/AdminBookings";
+import StudentScheduleRequests from "@/pages/student/StudentScheduleRequests";
 
 
 
 export default function AppRouter() {
   return (
     <Routes>
+      <Route path="/admin/send-notification" element={<PrivateRoute allowedRoles={["admin"]}><AdminLayout><SendNotification /></AdminLayout></PrivateRoute>} />
+      <Route path="/logout" element={<LogoutPage />} />
+      <Route path="/self-training" element={<Navigate to="/gym-packages" replace />} />
+      <Route path="/admin/self-training" element={<Navigate to="/admin/gym-packages" replace />} />
+      <Route path="/gym-packages" element={<PrivateRoute allowedRoles={["student"]}><GymPackagesPage /></PrivateRoute>} />
+      <Route path="/admin/gym-packages" element={<PrivateRoute allowedRoles={["admin"]}><AdminLayout><GymPackagesPage admin /></AdminLayout></PrivateRoute>} />
+      <Route path="/admin/bookings" element={<PrivateRoute allowedRoles={["admin"]}><AdminBookings /></PrivateRoute>} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/payment/transfer/:transactionId" element={<PrivateRoute allowedRoles={["student"]}><BankTransfer /></PrivateRoute>} />
       <Route path="/register" element={<RegisterPage />} />
@@ -66,6 +80,8 @@ export default function AppRouter() {
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/list-pt" element={<SearchPTs />} />
       <Route path="/training-calendar" element={<TrainingCalendar />} />
+      <Route path="/student/requests" element={<PrivateRoute allowedRoles={["student"]}><StudentScheduleRequests /></PrivateRoute>} />
+      <Route path="/my-bookings" element={<PrivateRoute allowedRoles={["student"]}><MyBookings /></PrivateRoute>} />
       <Route path="/my-packages" element={<MyPackage />} />
       <Route
         path="/profile"
@@ -212,6 +228,7 @@ export default function AppRouter() {
       {/* ... */}
       <Route path="/pt/schedule1" element={<MyCalendar />} />
       <Route path="/pt/schedule" element={<PTSchedule />} />
+      <Route path="/pt/bookings" element={<PrivateRoute allowedRoles={["pt"]}><PTBookingRequests /></PrivateRoute>} />
       {/* Student có thể dùng cùng page này nếu muốn, hoặc tách ra layout khác */}
       <Route path="/pt/students" element={<PTStudents />} />
       <Route path="/pt/wallet" element={<PTWallet />} />

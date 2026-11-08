@@ -3,8 +3,10 @@ import { sequelize } from '../../config/sql.js'
 
 const PackageSQL = sequelize.define('PackageSQL', {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
-  ptId: { type: DataTypes.UUID, field: 'pt_id', allowNull: false },
+  ptId: { type: DataTypes.UUID, field: 'pt_id', allowNull: true },
   name: { type: DataTypes.STRING(80), allowNull: false },
+  gymName: { type: DataTypes.STRING(120), field: 'gym_name' },
+  gymAddress: { type: DataTypes.STRING(500), field: 'gym_address' },
   description: { type: DataTypes.STRING(1000) },
   price: { type: DataTypes.BIGINT, defaultValue: 0 },
   recurrence: { type: DataTypes.TEXT, defaultValue: '{"daysOfWeek":[]}' },

@@ -4,7 +4,7 @@ import { sequelize } from '../../config/sql.js'
 const StudentPackageSQL = sequelize.define('StudentPackageSQL', {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
   studentId: { type: DataTypes.UUID, field: 'student_id', allowNull: false },
-  ptId: { type: DataTypes.UUID, field: 'pt_id', allowNull: false },
+  ptId: { type: DataTypes.UUID, field: 'pt_id', allowNull: true },
   packageId: { type: DataTypes.UUID, field: 'package_id' },
   transactionId: { type: DataTypes.UUID, field: 'transaction_id', unique: true },
   bookingId: { type: DataTypes.UUID, field: 'booking_id' },

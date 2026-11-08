@@ -11,8 +11,6 @@ import Step3Schedule from "./Step3Schedule";
 import Step4StartDate from "./Step4StartDate";
 import Step5Preview from "./Step5Preview";
 import { useAuth } from "@/contexts/AuthProvider";
-import { booking } from "@/services/bookingService";
-import { toast } from "react-toastify";
 
 const STEPS = ["Chọn gói", "Địa điểm dạy", "Lịch cố định", "Ngày bắt đầu", "Preview & Xác nhận"];
 
@@ -20,7 +18,7 @@ export default function BookingWizard() {
   const { id: ptId } = useParams();
   const [sp] = useSearchParams();
   const navigate = useNavigate();
-  const { set, state } = useBooking();
+  const { set } = useBooking();
   const { user } = useAuth();
 
   const packageId = sp.get("packageId");
@@ -28,37 +26,6 @@ export default function BookingWizard() {
   const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState(packageId ? 1 : 0);
-
-  const handleCheckout = async () => {
-    try {
-      await booking({
-        student: user._id,
-        pt: state?.ptId,
-        package: state?.packageId,
-        mode: state?.mode,
-        pattern: state?.pattern,
-        slot: state?.slot,
-        startDate: state?.startDate,
-        totalSessions: state?.package?.totalSessions || 9,
-        sessionDurationMin: state?.package?.sessionDurationMin || 60,
-        clientAddress: state?.clientAddress || null,
-        ptGymAddress: state?.ptGymAddress || null,
-        otherGymAddress: state?.otherGymAddress || null,
-        travelPolicy: state?.travelPolicy,
-        travelDistanceKm: state?.distanceKm,
-        travelFee: state?.travelFee,
-        inRange: state?.inRange,
-        packageSnapshot: state?.packageSnapshot,
-        pricing: { base: state?.packageSnapshot?.price, travel: null },
-        amount: null,
-        currency: "VND",
-        status: "PENDING_PAYMENT",
-      });
-      toast.success("Đặt lịch thành công!");
-    } catch {
-      toast.error("Đặt lịch thất bại. Vui lòng thử lại.");
-    }
-  };
 
   useEffect(() => {
     (async () => {
@@ -80,7 +47,7 @@ export default function BookingWizard() {
         package: selected || null,
         packageSnapshot: selected ? { name: selected.name, price: selected.price, currency: 'VND', totalSessions: selected.totalSessions, sessionDurationMin: selected.sessionDurationMin } : {},
         pattern: [], slot: null, mode: null, distanceKm: null,
-        travelPolicy: ptData.travelPolicy || { freeRadiusKm: 5, maxTravelKm: 15, feePerKm: 10000 },
+        travelPolicy: { freeRadiusKm: 5, maxTravelKm: 15, feePerKm: 10000, ...(ptData.travelPolicy || {}) },
       });
       if (packageId && !selected) setStep(0);
 
@@ -128,7 +95,6 @@ export default function BookingWizard() {
             <Step5Preview
               student={user}
               onBack={() => setStep(3)}
-              onConfirm={handleCheckout}
             />
           )}
         </div>

@@ -1,17 +1,30 @@
 import Feedback from '~/models/sql/Feedback.js'
 import PTProfile from '~/models/sql/PTProfile.js'
 import Notification from '~/models/sql/Notification.js'
+import StudentPackage from '~/models/sql/StudentPackage.js'
+import Session from '~/models/sql/Session.js'
 import { StatusCodes } from 'http-status-codes'
 import { hydrateFeedbacks } from '../services/sqlRelations.js'
 
 const createFeedback = async (req, res) => {
   try {
     const { studentPackage, pt, rating, comment, notificationId } = req.body
-    const student = req.user?._id || req.body.student
-    if (!pt || !studentPackage || !rating) return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Thiếu thông tin bắt buộc.' })
-    const feedback = await Feedback.create({ studentPackageId: studentPackage, studentId: student, ptId: pt, rating, comment })
+    const student = req.user?._id || req.user?.id
+    const numericRating = Number(rating)
+    if (!pt || !studentPackage || !student || !Number.isInteger(numericRating) || numericRating < 1 || numericRating > 5) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ success: false, message: 'Vui lòng chọn đánh giá từ 1 đến 5 sao.' })
+    }
+    const enrollment = await StudentPackage.findOne({ where: { id: studentPackage, studentId: student } })
+    if (!enrollment || String(enrollment.ptId) !== String(pt)) {
+      return res.status(StatusCodes.FORBIDDEN).json({ success: false, message: 'Gói tập không thuộc tài khoản hoặc PT này.' })
+    }
+    const completedSession = await Session.findOne({ where: { studentPackageId: enrollment.id, studentId: student, ptId: pt, status: 'completed' } })
+    if (!completedSession) {
+      return res.status(StatusCodes.CONFLICT).json({ success: false, message: 'Bạn chỉ có thể đánh giá sau khi hoàn thành ít nhất một buổi tập.' })
+    }
+    const feedback = await Feedback.create({ studentPackageId: studentPackage, studentId: student, ptId: pt, rating: numericRating, comment })
     if (notificationId) {
-      const notification = await Notification.findByPk(notificationId)
+      const notification = await Notification.findOne({ where: { id: notificationId, userId: student } })
       if (notification) {
         let meta = {}
         try { meta = JSON.parse(notification.meta || '{}') } catch { meta = {} }

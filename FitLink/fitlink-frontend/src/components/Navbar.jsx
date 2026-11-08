@@ -15,7 +15,7 @@ const navLinkClass = ({ isActive }) =>
   }`
 
 export default function Navbar() {
-  const { user } = useContext(AuthContext)
+  const { user, setUser } = useContext(AuthContext)
   const [showDropdown, setShowDropdown] = useState(false)
   const dropdownRef = useRef()
   const navigate = useNavigate()
@@ -42,6 +42,7 @@ export default function Navbar() {
   const handleClickLogout = async () => {
     try {
       await logout()
+      setUser(null)
       toast.success('Logout Successful!')
       navigate('/login')
     } catch (error) {
@@ -76,6 +77,7 @@ export default function Navbar() {
         >
           Programs
         </NavLink>
+        <NavLink to="/gym-packages" className={navLinkClass}>Gym Packages</NavLink>
         <NavLink
           to="/list-pt"
           className={navLinkClass}
@@ -132,6 +134,8 @@ export default function Navbar() {
           {isProfileOpen && (
             <div className="absolute right-0 top-full z-[9999] mt-3 w-60 overflow-hidden rounded-2xl border border-white/70 bg-[rgba(255,252,248,0.95)] shadow-[0_24px_60px_rgba(88,54,24,0.16)] backdrop-blur-xl text-slate-700">
               <ul className="py-1">
+                <li><Link to="/gym-packages" className="block px-4 py-2.5 hover:bg-orange-50" onClick={() => setIsProfileOpen(false)}>Gym Packages</Link></li>
+                {user?.role === 'student' && <li><Link to="/my-bookings" className="block px-4 py-2.5 hover:bg-orange-50" onClick={() => setIsProfileOpen(false)}>PT booking requests</Link></li>}
                 <li
                   className="cursor-pointer px-4 py-2.5 hover:bg-orange-50"
                   onClick={() => {

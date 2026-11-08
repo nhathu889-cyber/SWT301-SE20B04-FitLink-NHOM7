@@ -1,4 +1,5 @@
 import express from 'express'
+import gymPackageRoutes from './routes/gymPackageRoutes.js'
 import { sqlResponseMiddleware } from './utils/sqlResponse.js'
 import { env } from '~/config/environment'
 import { errorHandlingMiddleware } from '~/middlewares/errorHandlingMiddleware'
@@ -49,6 +50,7 @@ import notificationRoutes from './routes/notificationRoutes.js'
 
 // 🆕 Thêm dòng này
 import { initChatSocket } from './sockets/chatSqlSocket.js'
+import { startSessionReminderWorker } from './services/sessionReminderService.js'
 
 const START_SERVER = () => {
   const app = express()
@@ -90,6 +92,7 @@ const START_SERVER = () => {
   })
 
   // user router
+  app.use('/api/gym-packages', gymPackageRoutes)
   app.use('/api/search', searchRoutes)
   app.use('/api/auth', authRoutes)
   app.use('/api/admin', adminRoutes)
@@ -129,6 +132,7 @@ const START_SERVER = () => {
 
   // 🆕 Thêm dòng này sau khi app config xong
   initChatSocket(server)
+  startSessionReminderWorker()
 
   server.listen(env.APP_PORT, env.APP_HOST, () => {
     console.log(`✅ Server running at http://${env.APP_HOST}:${env.APP_PORT}/`)

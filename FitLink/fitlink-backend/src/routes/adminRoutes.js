@@ -1,4 +1,5 @@
 import express from 'express'
+import { getRecipients, sendNotification } from '../controllers/adminNotificationController.js'
 import { userAdminSqlController as userAdminController } from '../controllers/adminSqlController.js'
 import { authMiddleware } from '../middlewares/authMiddleware.js'
 import PTProfile from '../models/sql/PTProfile.js'
@@ -9,6 +10,8 @@ import { getAllPTs } from '../controllers/ptSqlController.js'
 
 
 const router = express.Router()
+router.get('/notifications/recipients', authMiddleware.authenTokenCookie, authMiddleware.isAdmin, getRecipients)
+router.post('/notifications', authMiddleware.authenTokenCookie, authMiddleware.isAdmin, sendNotification)
 
 // USER
 // Lấy danh sách user

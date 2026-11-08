@@ -1,6 +1,20 @@
 
 # FitLink backend — SQL Server
 
+## Tạo tài khoản admin
+
+Chạy `npm run create:admin` trong thư mục backend để tạo admin trên SQL Server
+đang cấu hình. Mặc định số điện thoại là `0999999999`, email là
+`admin@fitlink.local`; mật khẩu ngẫu nhiên được in một lần sau khi tạo.
+Có thể đặt `ADMIN_PHONE`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` trước khi chạy
+(mật khẩu tự đặt phải có ít nhất 12 ký tự). Script từ chối nếu số điện thoại
+hoặc email đã tồn tại, không đổi quyền hoặc mật khẩu tài khoản cũ.
+
+Đăng nhập bằng số điện thoại và mật khẩu vừa tạo, mở `/admin-transactions`,
+chọn “Chờ xác nhận chuyển khoản”. Đối chiếu số tiền và nội dung chuyển khoản
+với giao dịch thực nhận trong ngân hàng trước khi bấm “Đã nhận tiền”.
+Trang này hỗ trợ xác nhận thủ công, không tự tra cứu số dư ngân hàng.
+
 Backend dùng SQL Server qua Sequelize/tedious. Toàn bộ model nằm trong
 `src/models/sql`; không có nhánh database demo trong bộ nhớ. API giữ `_id`,
 `createdAt`, `updatedAt` để tương thích frontend; ID thực tế là UUID.

@@ -23,9 +23,10 @@ function service(slot = {}, session = {}) {
   })
 }
 const { buildBookingSchedule } = service()
-function checkout({ status = 'pending_transfer', scheduleError = false } = {}) {
+function checkout({ status = 'pending_transfer', scheduleError = false, gymTicket = false } = {}) {
   const calls = []
   const transaction = { id: '12345678-1234-1234-1234-123456789012', studentId: 'student', ptId: 'pt', packageId: 'pkg', bookingId: 'booking', amount: 5000, method: 'bank_transfer', status, update: async changes => Object.assign(transaction, changes) }
+  if (gymTicket) Object.assign(transaction, { ptId: null, bookingId: null })
   const tx = { commit: async () => calls.push('commit'), rollback: async () => calls.push('rollback') }
   const enrollment = { id: 'enrollment' }
   const { checkoutSqlController: controller } = load('controllers/checkoutSqlController.js', {
@@ -34,9 +35,9 @@ function checkout({ status = 'pending_transfer', scheduleError = false } = {}) {
     sequelize: { Op }, '~/config/sql.js': { sequelize: { transaction: async () => tx } },
     '~/models/sql/Package.js': { findByPk: async () => ({ totalSessions: 8, durationDays: 30, sessionDurationMin: 60 }) },
     '~/models/sql/Booking.js': { update: async () => calls.push('booking'), findByPk: async () => ({ pattern: '[1,3,5]', slot: '{"start":"06:00","end":"07:00"}', startDate: new Date('2030-01-07') }) },
-    '~/models/sql/Transaction.js': { findOne: async options => { calls.push(options.where); return transaction }, update: async () => { calls.push('claim'); return [1] } },
+    '~/models/sql/Transaction.js': { findOne: async options => { calls.push(options.where); return transaction }, update: async changes => { if (gymTicket) { assert.equal(changes.platformFee, 5000); assert.equal(changes.ptEarning, 0) } calls.push('claim'); return [1] } },
     '~/models/sql/StudentProfile.js': {},
-    '~/models/sql/StudentPackage.js': { findOne: async () => null, create: async () => { calls.push('enrollment'); return enrollment } },
+    '~/models/sql/StudentPackage.js': { findOne: async () => null, create: async values => { if (gymTicket) { assert.equal(values.ptId, null); assert.equal(values.bookingId, null); assert.equal(values.endDate - values.startDate, 30 * 86400000) } calls.push('enrollment'); return enrollment } },
     '~/config/environment.js': { env: { PLATFORM_FEE_PERCENT: 20 } },
     '~/utils/pricingUtils.js': {},
     '~/services/sqlWalletService.js': { creditPTWalletSQL: async options => { assert.equal(options.amount, 4000); assert.equal(options.transaction, tx); calls.push('wallet') } },
@@ -46,6 +47,60 @@ function checkout({ status = 'pending_transfer', scheduleError = false } = {}) {
   const res = { statusCode: 200, status(code) { this.statusCode = code; return this }, json(body) { this.body = body; return this } }
   return { controller, res, calls, transaction }
 }
+test('gym ticket confirmation activates access without PT schedule or wallet credit', async () => {
+  const { controller, res, calls, transaction } = checkout({ gymTicket: true })
+  await controller.confirmPayment({ user: { _id: 'admin', role: 'admin' }, params: { transactionId: transaction.id }, body: {} }, res)
+  expect(res.body.data.destination).toBe('/gym-packages')
+  expect(calls).toContain('enrollment')
+  expect(calls).not.toContain('schedule')
+  expect(calls).not.toContain('wallet')
+  expect(calls).not.toContain('booking')
+  expect(calls.at(-1)).toBe('commit')
+})
+
+test('gym ticket confirmation retry does not activate another enrollment', async () => {
+  const { controller, res, calls, transaction } = checkout({ gymTicket: true, status: 'paid' })
+  await controller.confirmPayment({ user: { _id: 'admin', role: 'admin' }, params: { transactionId: transaction.id }, body: {} }, res)
+  expect(res.body.data.destination).toBe('/gym-packages')
+  expect(calls).not.toContain('enrollment')
+  expect(calls).not.toContain('claim')
+})
+
+function gymPackageController({ enrolled = false, usable = true } = {}) {
+  const calls = []
+  const controller = load('controllers/gymPackageController.js', {
+    sequelize: { Op, literal: value => value }, '../config/sql.js': { sequelize: {} },
+    '../models/sql/Package.js': { findOne: async () => ({ id: 'pkg', price: 120000 }) },
+    '../models/sql/StudentPackage.js': {
+      findOne: async options => { assert.equal(options.where.studentId, 'student'); assert.equal(options.where.status, 'active'); assert.ok(options.where.endDate[Op.gt] instanceof Date); return enrolled ? { id: 'owned' } : null },
+      update: async (values, options) => { assert.equal(values.remainingSessions, 'remaining_sessions - 1'); assert.equal(options.where.ptId, null); assert.equal(options.where.remainingSessions[Op.gt], 0); assert.ok(options.where.endDate[Op.gt] instanceof Date); return [usable ? 1 : 0] }
+    },
+    '../models/sql/Transaction.js': { findOne: async () => null, create: async values => { calls.push(values); return { id: 'payment', ...values } } },
+    '../config/manualPayment.js': { manualPayment: { enabled: true, amount: 5000 } }
+  })
+  const res = { statusCode: 200, status(code) { this.statusCode = code; return this }, json(body) { this.body = body; return this } }
+  return { controller, calls, res }
+}
+
+test('expired or exhausted gym ticket cannot be consumed', async () => {
+  const { controller, res } = gymPackageController({ usable: false })
+  await controller.useVisit({ params: { id: 'ticket' } }, res)
+  expect(res.statusCode).toBe(409)
+})
+
+test('active gym ticket consumes exactly one remaining visit atomically', async () => {
+  const { controller, res } = gymPackageController()
+  await controller.useVisit({ params: { id: 'ticket' } }, res)
+  expect(res.body.success).toBe(true)
+})
+
+test('gym ticket checkout uses server package price and no PT or booking', async () => {
+  const { controller, calls, res } = gymPackageController()
+  await controller.checkout({ params: { id: 'pkg' }, user: { _id: 'student', role: 'student' }, body: { amount: 1, ptId: 'fake' } }, res)
+  expect(res.statusCode).toBe(201)
+  expect(calls[0]).toMatchObject({ amount: 120000, ptId: null, bookingId: null, method: 'bank_transfer' })
+})
+
 test('manual QR checkout uses local payment page and never calls PayOS', async () => {
   const { controller, res, transaction } = checkout({ status: 'initiated' })
   await controller.createPaymentLink({ user: { _id: 'student' }, params: { transactionId: transaction.id } }, res)

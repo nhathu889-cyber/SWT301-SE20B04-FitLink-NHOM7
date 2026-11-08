@@ -4,7 +4,7 @@ import { sequelize } from '../../config/sql.js'
 const TransactionSQL = sequelize.define('TransactionSQL', {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
   studentId: { type: DataTypes.UUID, field: 'student_id', allowNull: false },
-  ptId: { type: DataTypes.UUID, field: 'pt_id', allowNull: false },
+  ptId: { type: DataTypes.UUID, field: 'pt_id', allowNull: true },
   packageId: { type: DataTypes.UUID, field: 'package_id', allowNull: false },
   bookingId: { type: DataTypes.UUID, field: 'booking_id' },
   amount: { type: DataTypes.BIGINT, allowNull: false },

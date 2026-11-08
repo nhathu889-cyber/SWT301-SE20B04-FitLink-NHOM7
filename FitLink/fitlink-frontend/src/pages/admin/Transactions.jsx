@@ -10,6 +10,7 @@ import {
 } from "react-icons/fa";
 
 const statusColors = {
+  pending_transfer: "text-amber-300 bg-amber-900/20 border border-amber-500/40",
   paid: "text-green-400 bg-green-900/20 border border-green-500/40",
   failed: "text-red-400 bg-red-900/20 border border-red-500/40",
   pending_gateway:
@@ -24,11 +25,18 @@ export default function Transactions() {
   const [confirming, setConfirming] = useState(null);
   const [confirmError, setConfirmError] = useState('');
   const confirmTransfer = async (transaction) => {
-    if (!window.confirm(`Đã nhận ${Number(transaction.amount).toLocaleString('vi-VN')} đ với nội dung FL${transaction._id.replace(/-/g, '').toUpperCase()}?`)) return;
+    if (!window.confirm(`Confirm receipt of ${Number(transaction.amount).toLocaleString('en-US')} VND with reference FL${transaction._id.replace(/-/g, '').toUpperCase()}?`)) return;
     setConfirming(transaction._id);
     setConfirmError('');
     try { await axios.post(`/admin/transactions/${transaction._id}/confirm-transfer`); await fetchData(); }
     catch (error) { setConfirmError(error.response?.data?.message || 'Không xác nhận được giao dịch'); }
+    finally { setConfirming(null); }
+  };
+  const rejectTransfer = async (transaction) => {
+    if (!window.confirm(`Reject bank transfer ${transaction._id}? This will release its booked time slots.`)) return;
+    setConfirming(transaction._id); setConfirmError('');
+    try { await axios.post(`/admin/transactions/${transaction._id}/reject-transfer`); await fetchData(); }
+    catch (error) { setConfirmError(error.response?.data?.message || 'Không thể từ chối giao dịch'); }
     finally { setConfirming(null); }
   };
   const [page, setPage] = useState(1);
@@ -74,8 +82,9 @@ export default function Transactions() {
   return (
     <div className="p-6 text-gray-200 relative before:hidden after:hidden">
       <h1 className="text-3xl font-bold mb-6 text-orange-400">
-        View Transactions
+        Payment Confirmations
       </h1>
+      <p className="mb-6 text-sm text-slate-400">Student transfers appear here. Confirm only after matching the amount and reference in your bank account.</p>
       {confirmError && <p role="alert" className="text-red-400">{confirmError}</p>}
 
       {/* SUMMARY + FILTER */}
@@ -107,7 +116,7 @@ export default function Transactions() {
             }}
           >
             <option value="paid">Paid</option>
-            <option value="pending_transfer">Chờ xác nhận chuyển khoản</option>
+            <option value="pending_transfer">Awaiting bank transfer confirmation</option>
             <option value="pending_gateway">Pending Gateway</option>
             <option value="initiated">Initiated</option>
             <option value="failed">Failed</option>
@@ -162,7 +171,7 @@ export default function Transactions() {
                   className="border-t border-slate-700 hover:bg-slate-800/50 transition"
                 >
                   <td className="p-3">{t.student?.name}</td>
-                  <td className="p-3">{t.pt?.name}</td>
+                  <td className="p-3">{t.pt?.name || 'Vé gym (không PT)'}</td>
                   <td className="p-3">{t.package?.name}</td>
 
                   <td className="p-3 text-orange-400 font-semibold">
@@ -176,6 +185,7 @@ export default function Transactions() {
                   <td className="p-3">
                     {t.method === 'bank_transfer' && <div className="text-xs break-all mb-2">{Number(t.amount).toLocaleString('vi-VN')} đ · FL{t._id.replace(/-/g, '').toUpperCase()}</div>}
                     {t.status === 'pending_transfer' && t.method === 'bank_transfer' && <button disabled={confirming !== null} onClick={() => confirmTransfer(t)} className="bg-orange-600 rounded px-3 py-2 mb-2">{confirming === t._id ? 'Đang xác nhận…' : 'Đã nhận tiền'}</button>}
+                    {t.status === 'pending_transfer' && t.method === 'bank_transfer' && <button disabled={confirming !== null} onClick={() => rejectTransfer(t)} className="rounded border border-red-700 px-3 py-2 mb-2 text-red-300">Từ chối / giải phóng slot</button>}
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
                         statusColors[t.status]

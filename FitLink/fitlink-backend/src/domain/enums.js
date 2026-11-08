@@ -19,18 +19,19 @@ export const TrainingLocationType = Object.freeze({
 
 // Trạng thái booking/session (tuỳ anh dùng tới đâu)
 export const BookingStatus = Object.freeze({
-  PENDING_PAYMENT: 'pending_payment',
-  PAID: 'paid',
-  CANCELLED: 'cancelled',
-  REFUNDED: 'refunded'
+  PENDING_APPROVAL: 'PENDING_APPROVAL',
+  PENDING_PAYMENT: 'PENDING_PAYMENT',
+  PAID: 'PAID',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+  EXPIRED: 'EXPIRED'
 })
 
 export const SessionStatus = Object.freeze({
-  SCHEDULED:'scheduled',
-  COMPLETED:'completed',
-  ABSENT:'absent',
-  RESCHEDULE_REQUESTED:'reschedule_requested',
-  CONFIRMED:'confirmed'
+  SCHEDULED: 'scheduled',
+  COMPLETED: 'completed',
+  MISSED: 'missed',
+  CANCELLED: 'cancelled'
 })
 
 export const PackageTags = Object.freeze({

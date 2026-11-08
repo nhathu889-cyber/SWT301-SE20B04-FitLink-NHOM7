@@ -6,6 +6,7 @@ import { checkoutSqlController } from '../controllers/checkoutSqlController.js';
 const router = express.Router();
 router.use(authMiddleware.authenTokenCookie, authMiddleware.isAdmin);
 router.post('/:transactionId/confirm-transfer', checkoutSqlController.confirmPayment);
+router.post('/:transactionId/reject-transfer', checkoutSqlController.rejectBankTransfer);
 
 router.get("/", getTransactions);
 

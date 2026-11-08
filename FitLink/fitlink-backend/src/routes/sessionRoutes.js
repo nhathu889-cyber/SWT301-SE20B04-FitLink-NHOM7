@@ -7,6 +7,7 @@ const router = express.Router()
 router.get('/pt', protect, sessionController.getSessionsByPT)
 // dùng sessionController.updateSessionStatus để chắc chắn callback tồn tại
 router.put('/:id/status', protect, sessionController.updateSessionStatus)
+router.delete('/:id', protect, sessionController.deleteSession)
 // routes/sessionRoutes.js
 
 

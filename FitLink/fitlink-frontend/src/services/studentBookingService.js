@@ -6,7 +6,11 @@ export const studentRequestChange = (payload) =>
 export const studentRequestAbsent = (payload) =>
     axiosClient.post("/session/student/request-absent", payload);
 
+export const getStudentScheduleRequests = () =>
+    axiosClient.get("/session/student/requests");
+
 export default {
     studentRequestChange,
     studentRequestAbsent,
+    getStudentScheduleRequests,
 };

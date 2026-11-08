@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { getSocket } from "@/api/socket";
 import { toast } from "react-hot-toast";
 import Lottie from "lottie-react";
+import axios from "@/api/axiosClient";
 //import errorAnim from "@/assets/lotties/ErrorAnimation.json";
 moment.locale("vi");
 const localizer = momentLocalizer(moment);
@@ -28,7 +29,6 @@ const TrainingCalendar = ({ role = "student" }) => {
   // MODALS
   const [newDate, setNewDate] = useState("");
   const [newStart, setNewStart] = useState("");
-  const [newEnd, setNewEnd] = useState("");
   // BMI MODAL
   const [openBmiModal, setOpenBmiModal] = useState(false);
   const [heightCm, setHeightCm] = useState("");
@@ -45,20 +45,21 @@ const TrainingCalendar = ({ role = "student" }) => {
     message: "",
   });
   const [openReasonModal, setOpenReasonModal] = useState(false);
+  const [sendingRequest, setSendingRequest] = useState(false);
   const [reasonType, setReasonType] = useState(""); // change | absent
   const [reasonText, setReasonText] = useState("");
   const today = moment().format("YYYY-MM-DD");
+  const originalDurationMinutes = selectedEvent
+    ? moment(selectedEvent.end).diff(moment(selectedEvent.start), "minutes")
+    : 0;
+  const newEndPreview = newDate && newStart && originalDurationMinutes > 0
+    ? moment(`${newDate}T${newStart}`, "YYYY-MM-DDTHH:mm").add(originalDurationMinutes, "minutes")
+    : null;
 
   const isPastTimeToday = (date, time) => {
     const now = new Date();
     const selected = new Date(`${date}T${time}:00`);
     return selected < now;
-  };
-
-  const durationMinutes = (start, end) => {
-    const s = moment(start, "HH:mm");
-    const e = moment(end, "HH:mm");
-    return e.diff(s, "minutes");
   };
 
   // LOAD PACKAGES
@@ -179,7 +180,7 @@ const TrainingCalendar = ({ role = "student" }) => {
     }
 
     try {
-      const res = await axios.post("/students/bmi/session", {
+      const res = await axios.post("/student/bmi/session", {
         sessionId: selectedEvent.sessionId,
         heightCm: Number(heightCm),
         weightKg: Number(weightKg),
@@ -214,7 +215,7 @@ const TrainingCalendar = ({ role = "student" }) => {
 
     try {
       if (reasonType === "change") {
-        if (!newDate || !newStart || !newEnd)
+        if (!newDate || !newStart)
           return toast.error("Hãy chọn ngày và giờ mới!");
         // 1) Ngày quá khứ
         if (newDate < today) {
@@ -228,31 +229,31 @@ const TrainingCalendar = ({ role = "student" }) => {
           return;
         }
 
-        // 3) Giờ kết thúc phải > giờ bắt đầu
-        if (newEnd <= newStart) {
-          toast.error("Giờ kết thúc phải sau giờ bắt đầu!");
-          return;
-        }
-
-        // 4) Check độ dài session gốc
+        // Giữ nguyên thời lượng buổi tập gốc để tránh tạo yêu cầu sai thời lượng.
         const originalDuration = moment(selectedEvent.end).diff(moment(selectedEvent.start), "minutes");
-        const newDuration = durationMinutes(newStart, newEnd);
-
-        if (newDuration !== originalDuration) {
-          toast.error(`Buổi tập phải kéo dài ${originalDuration} phút!`);
+        if (!Number.isFinite(originalDuration) || originalDuration <= 0) {
+          toast.error("Không xác định được thời lượng buổi tập gốc.");
           return;
         }
-        const newStartTime = `${newDate}T${newStart}:00`;
-        const newEndTime = `${newDate}T${newEnd}:00`;
+        const newStartAt = moment(`${newDate}T${newStart}`, "YYYY-MM-DDTHH:mm", true);
+        if (!newStartAt.isValid()) {
+          toast.error("Ngày hoặc giờ bắt đầu không hợp lệ.");
+          return;
+        }
+        const newEndAt = newStartAt.clone().add(originalDuration, "minutes");
 
+        setSendingRequest(true);
         await studentBookingService.studentRequestChange({
           sessionId: selectedEvent.sessionId,
           reason: reasonText,
-          newStartTime,
-          newEndTime,
+          // Send an absolute instant. The server converts it back to Vietnam
+          // local time when checking the PT's working hours.
+          newStartTime: newStartAt.toDate().toISOString(),
+          newEndTime: newEndAt.toDate().toISOString(),
         });
       }
       else {
+        setSendingRequest(true);
         await studentBookingService.studentRequestAbsent({
           sessionId: selectedEvent.sessionId,
           reason: reasonText,
@@ -270,6 +271,8 @@ const TrainingCalendar = ({ role = "student" }) => {
 
       // Hiện animation lỗi 1s, không chuyển trang
       showFeedback("error", msg);
+    } finally {
+      setSendingRequest(false);
     }
   };
 
@@ -366,6 +369,9 @@ const TrainingCalendar = ({ role = "student" }) => {
               onClick={() => {
                 setOpenActionModal(false);
                 setReasonType("change");
+                setNewDate("");
+                setNewStart("");
+                setReasonText("");
                 setOpenReasonModal(true);
               }}
               className="w-full bg-blue-600 text-white py-2 rounded-lg mb-3"
@@ -451,23 +457,15 @@ const TrainingCalendar = ({ role = "student" }) => {
                   }}
                 />
 
-                {/* GIỜ KẾT THÚC */}
-                <label className="block mb-2 font-medium">Giờ kết thúc</label>
+                {/* Keep the original session duration when rescheduling. */}
+                <label className="block mb-2 font-medium">Giờ kết thúc ({originalDurationMinutes} phút)</label>
                 <input
                   type="time"
-                  className="w-full border rounded-lg p-2 mb-4"
-                  value={newEnd}
-                  onChange={(e) => {
-                    const val = e.target.value;
-
-                    if (newStart && val <= newStart) {
-                      toast.error("Giờ kết thúc phải sau giờ bắt đầu!");
-                      return;
-                    }
-
-                    setNewEnd(val);
-                  }}
+                  className="w-full border rounded-lg p-2 mb-1 bg-gray-100 text-gray-600"
+                  value={newEndPreview?.format("HH:mm") || ""}
+                  readOnly
                 />
+                {newEndPreview && newEndPreview.format("YYYY-MM-DD") !== newDate && <p className="mb-4 text-xs text-amber-700">Buổi tập kết thúc vào ngày {newEndPreview.format("DD/MM/YYYY")}.</p>}
 
               </>
             )}
@@ -485,12 +483,14 @@ const TrainingCalendar = ({ role = "student" }) => {
 
             <button
               onClick={sendRequest}
-              className="w-full bg-blue-600 text-white py-2 rounded-lg mb-2"
+              disabled={sendingRequest}
+              className="w-full bg-blue-600 text-white py-2 rounded-lg mb-2 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Gửi yêu cầu
+              {sendingRequest ? "Đang gửi..." : "Gửi yêu cầu"}
             </button>
 
             <button
+              disabled={sendingRequest}
               onClick={() => setOpenReasonModal(false)}
               className="w-full bg-gray-200 py-2 rounded-lg"
             >

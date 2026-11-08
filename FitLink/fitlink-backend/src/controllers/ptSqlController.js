@@ -7,6 +7,7 @@ import Transaction from '~/models/sql/Transaction.js'
 import Session from '~/models/sql/Session.js'
 import SessionChangeRequest from '~/models/sql/SessionChangeRequest.js'
 import Notification from '~/models/sql/Notification.js'
+import { movePTSession } from '~/services/sessionScheduleService.js'
 
 export const isPTVerified = async (req, res) => { const profile = await PTProfile.findOne({ where: { userId: req.user._id } }); return res.json({ verified: Boolean(profile?.verified) }) }
 export const getAllPTs = async (_req, res) => res.json(await User.findAll({ where: { role: 'pt' } }))
@@ -16,7 +17,40 @@ export const createStudentPackage = async (req, res) => { const { student, packa
 export const updateStudentPackage = async (req, res) => { const pkg = await StudentPackage.findOne({ where: { id: req.params.id, ptId: req.user._id } }); if (!pkg) return res.status(404).json({ message: 'Package not found' }); await pkg.update(req.body); return res.json(pkg) }
 export const getDashboardStats = async (req, res) => { const ptId = req.user._id; const [packages, templates, revenue] = await Promise.all([StudentPackage.findAll({ where: { ptId } }), Package.count({ where: { ptId, isActive: true } }), Transaction.sum('ptEarning', { where: { ptId, status: 'paid' } })]); return res.json({ success: true, data: { studentCount: new Set(packages.map(x => x.studentId)).size, soldPackageCount: packages.length, packageTemplateCount: templates, totalRevenue: Number(revenue) || 0 } }) }
 export const ptGetRequests = async (req, res) => { const sessions = await Session.findAll({ where: { ptId: req.user._id, requestStatus: { [Op.in]: ['change_request_pending', 'absent_request_pending'] } } }); const changes = await SessionChangeRequest.findAll({ where: { sessionId: sessions.map(x => x.id), status: 'pending' } }); const bySession = new Map(changes.map(x => [x.sessionId, x])); return res.json(sessions.map(x => ({ ...x.toJSON(), requestInfo: x.requestType === 'change' ? bySession.get(x.id) : { reason: x.requestReason } }))) }
-export const ptApproveRequest = async (req, res) => { const session = await Session.findOne({ where: { id: req.body.sessionId, ptId: req.user._id } }); if (!session) return res.status(404).json({ message: 'Session không tồn tại hoặc không có quyền' }); const type = session.requestType || req.body.requestType; if (!['change', 'absent'].includes(type)) return res.status(400).json({ message: 'Yêu cầu không hợp lệ' }); if (type === 'change') { const change = await SessionChangeRequest.findOne({ where: { sessionId: session.id, status: 'pending' } }); if (!change) return res.status(400).json({ message: 'Không tìm thấy yêu cầu đổi lịch' }); await change.update({ status: 'approved' }); await session.update({ startTime: change.newStartTime, endTime: change.newEndTime, status: 'scheduled' }) } else await session.update({ status: 'missed' }); await session.update({ requestType: null, requestStatus: null, requestReason: null }); await Notification.create({ userId: session.studentId, type: 'session', title: 'PT đã chấp nhận yêu cầu', message: 'Yêu cầu của bạn đã được chấp nhận', meta: JSON.stringify({ sessionId: session.id, requestType: type }) }); return res.json({ message: 'Đã chấp nhận yêu cầu', session }) }
-export const ptRejectRequest = async (req, res) => { const session = await Session.findOne({ where: { id: req.body.sessionId, ptId: req.user._id } }); if (!session) return res.status(404).json({ message: 'Session không tồn tại hoặc không có quyền' }); const type = session.requestType || req.body.requestType; if (!req.body.reason || !['change', 'absent'].includes(type)) return res.status(400).json({ message: 'Thiếu lý do hoặc yêu cầu không hợp lệ' }); if (type === 'change') await SessionChangeRequest.update({ status: 'rejected', rejectReason: req.body.reason }, { where: { sessionId: session.id, status: 'pending' } }); await session.update({ requestType: null, requestStatus: null, requestReason: null, status: 'scheduled' }); await Notification.create({ userId: session.studentId, type: 'session', title: 'PT đã từ chối yêu cầu', message: `Lý do: ${req.body.reason}`, meta: JSON.stringify({ sessionId: session.id, requestType: type }) }); return res.json({ message: 'Đã từ chối yêu cầu', session }) }
-export const updateSessionTimeByPT = async (req, res) => { if (!req.body.startTime || !req.body.endTime) return res.status(400).json({ message: 'Thiếu startTime hoặc endTime' }); const session = await Session.findOne({ where: { id: req.params.id, ptId: req.user._id } }); if (!session) return res.status(404).json({ message: 'Session không tồn tại hoặc bạn không có quyền' }); await session.update({ startTime: new Date(req.body.startTime), endTime: new Date(req.body.endTime) }); return res.json({ message: 'Cập nhật lịch buổi tập thành công', session }) }
-export const ptController = { isPTVerified, getMyStudents, getMyPackages, createStudentPackage, updateStudentPackage, getAllPTs, getDashboardStats, ptGetRequests, ptApproveRequest, ptRejectRequest, updateSessionTimeByPT }
+export const ptApproveRequest = async (req, res) => {
+  const session = await Session.findOne({ where: { id: req.body.sessionId, ptId: req.user._id } })
+  if (!session) return res.status(404).json({ message: 'Session không tồn tại hoặc không có quyền' })
+  const type = session.requestType || req.body.requestType
+  if (!['change', 'absent'].includes(type)) return res.status(400).json({ message: 'Yêu cầu không hợp lệ' })
+  if (type === 'change') {
+    const change = await SessionChangeRequest.findOne({ where: { sessionId: session.id, status: 'pending' } })
+    if (!change) return res.status(400).json({ message: 'Không tìm thấy yêu cầu đổi lịch' })
+    try {
+      await movePTSession({ sessionId: session.id, ptId: session.ptId, startTime: change.newStartTime, endTime: change.newEndTime })
+    } catch (error) { return res.status(error.statusCode || 500).json({ message: error.message }) }
+    await change.update({ status: 'approved' })
+    await session.reload()
+  } else await session.update({ status: 'missed' })
+  await session.update({ requestType: null, requestStatus: null, requestReason: null })
+  const notification = await Notification.create({ userId: session.studentId, type: 'session', title: 'PT đã chấp nhận yêu cầu', message: 'Yêu cầu của bạn đã được chấp nhận', meta: JSON.stringify({ sessionId: session.id, requestType: type }) })
+  global.sendNotificationToUser?.(session.studentId, notification)
+  return res.json({ message: 'Đã chấp nhận yêu cầu', session })
+}
+export const ptRejectRequest = async (req, res) => {
+  const session = await Session.findOne({ where: { id: req.body.sessionId, ptId: req.user._id } })
+  if (!session) return res.status(404).json({ message: 'Session không tồn tại hoặc không có quyền' })
+  const type = session.requestType || req.body.requestType
+  if (!req.body.reason || !['change', 'absent'].includes(type)) return res.status(400).json({ message: 'Thiếu lý do hoặc yêu cầu không hợp lệ' })
+  if (type === 'change') await SessionChangeRequest.update({ status: 'rejected', rejectReason: req.body.reason }, { where: { sessionId: session.id, status: 'pending' } })
+  await session.update({ requestType: null, requestStatus: null, requestReason: null, status: 'scheduled' })
+  const notification = await Notification.create({ userId: session.studentId, type: 'session', title: 'PT đã từ chối yêu cầu', message: `Lý do: ${req.body.reason}`, meta: JSON.stringify({ sessionId: session.id, requestType: type }) })
+  global.sendNotificationToUser?.(session.studentId, notification)
+  return res.json({ message: 'Đã từ chối yêu cầu', session })
+}
+export const updateSessionTimeByPT = async (req, res) => {
+  if (!req.body.startTime || !req.body.endTime) return res.status(400).json({ message: 'Thiếu startTime hoặc endTime' })
+  try {
+    const session = await movePTSession({ sessionId: req.params.id, ptId: req.user._id, startTime: req.body.startTime, endTime: req.body.endTime })
+    return res.json({ message: 'Đã cập nhật lịch và giải phóng slot cũ.', session })
+  } catch (error) { return res.status(error.statusCode || 500).json({ message: error.message }) }
+}export const ptController = { isPTVerified, getMyStudents, getMyPackages, createStudentPackage, updateStudentPackage, getAllPTs, getDashboardStats, ptGetRequests, ptApproveRequest, ptRejectRequest, updateSessionTimeByPT }

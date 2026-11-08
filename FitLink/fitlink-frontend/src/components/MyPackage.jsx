@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import myPackagesService from "@/services/myPackagesService";
 import materialService from "@/services/materialService"; // ⭐ NEW
 import Navbar from "@/components/Navbar";
+import { Link } from "react-router-dom";
 
 export default function MyPackage() {
   const [packages, setPackages] = useState([]);
@@ -56,6 +57,7 @@ export default function MyPackage() {
 
       <div className="max-w-7xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold mb-6 text-gray-900">My Packages</h1>
+        <Link to="/gym-packages" className="mb-6 inline-block font-semibold text-orange-600">Buy gym packages / View gym passes →</Link>
 
         <div className="rounded-xl border border-gray-200 shadow-lg bg-white overflow-hidden">
           {/* HEADER ROW */}
@@ -108,7 +110,7 @@ export default function MyPackage() {
 
                 <div className="text-right flex gap-2 justify-end">
                   <button
-                    onClick={() => openDetail(pkg)}
+                    onClick={() => pkg.ptId ? openDetail(pkg) : (window.location.href = '/gym-packages')}
                     className="px-4 py-1 text-sm font-medium bg-blue-600 text-white rounded-md hover:bg-blue-700 transition"
                   >
                     View
@@ -116,11 +118,11 @@ export default function MyPackage() {
 
                   <button
                     onClick={() =>
-                      (window.location.href = `/training-calendar`)
+                      (window.location.href = pkg.ptId ? '/training-calendar' : '/gym-packages')
                     }
                     className="px-4 py-1 text-sm font-medium bg-orange-500 text-white rounded-md hover:bg-orange-600 transition"
                   >
-                    Lịch tập
+                    {pkg.ptId ? 'Lịch tập' : 'Gym pass'}
                   </button>
                 </div>
               </div>

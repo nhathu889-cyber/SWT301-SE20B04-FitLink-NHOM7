@@ -17,9 +17,9 @@ export const loginWithGoogle = async (idToken) => {
   }
 };
 
-export const login = async (phone, password) => {
+export const login = async (phone, password, rememberMe = false) => {
     try {
-        const res = await axios.post('/auth/login', { phone: normalizePhone(phone), password }, { skipErrorToast: true });
+        const res = await axios.post('/auth/login', { phone: normalizePhone(phone), password, rememberMe }, { skipErrorToast: true });
         // setToken(res.data.accessToken);
         return res.data;
     } catch (error) {

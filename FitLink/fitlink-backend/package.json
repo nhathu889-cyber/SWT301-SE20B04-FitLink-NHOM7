@@ -16,6 +16,8 @@
     "production": "npm run build && node ./build/src/server.js",
     "dev": "node ./node_modules/nodemon/bin/nodemon.js --exec \"node ./node_modules/@babel/node/bin/babel-node.js\" ./src/server.js",
     "seed:pt-demo": "node scripts/seed-pt-demo.mjs",
+    "seed:gym-packages": "node scripts/seed-gym-packages.mjs",
+    "create:admin": "node scripts/create-admin.mjs",
     "db:migrate:sqlserver": "node scripts/migrate-sqlserver.mjs",
     "test:sql": "node scripts/test-sql.mjs",
     "test:api:sql": "npm run build && node scripts/test-api-sql.cjs",

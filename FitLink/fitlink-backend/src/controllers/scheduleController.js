@@ -247,7 +247,7 @@ const previewSchedule = async (req, res) => {
 /** 🔹 GENERATE (lưu Slot vào DB) */
 const generateSchedule = async (req, res) => {
   try {
-    console.log(req.body);
+    if (!['pt', 'admin'].includes(req.user?.role)) return res.status(StatusCodes.FORBIDDEN).json({ success: false, message: 'PT or admin access only' });
     
     const { packageId, startDate, carryForward, spreadWeekly } = req.body;
     if (!packageId)
@@ -256,6 +256,8 @@ const generateSchedule = async (req, res) => {
     const pkg = await Package.findByPk(packageId);
     if (!pkg)
       return res.status(StatusCodes.NOT_FOUND).json({ success: false, message: 'Package not found' });
+    if (req.user.role !== 'admin' && String(pkg.ptId) !== String(req.user._id))
+      return res.status(StatusCodes.FORBIDDEN).json({ success: false, message: 'You can only manage your own PT schedule' });
 
     const pt = await PTProfile.findOne({ where: { userId: pkg.ptId } });
     if (!pt)

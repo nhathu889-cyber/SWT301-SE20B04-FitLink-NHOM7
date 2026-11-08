@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict')
 const { randomUUID, randomInt } = require('node:crypto')
 const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 const User = require('../build/src/models/sql/User.js').default
 const { sequelize } = require('../build/src/config/sql.js')
 
@@ -11,9 +12,9 @@ const check = (name) => { passed++; console.log(`PASS ${name}`) }
 const request = (path, options = {}) => fetch(`${base}/api${path}`, {
   ...options, signal: AbortSignal.timeout(10000)
 })
-const login = (phone, password) => request('/auth/login', {
+const login = (phone, password, rememberMe) => request('/auth/login', {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ phone, password })
+  body: JSON.stringify({ phone, password, rememberMe })
 })
 
 async function run() {
@@ -39,6 +40,9 @@ async function run() {
       assert.equal(response.status, 200, await response.clone().text())
       const setCookie = response.headers.get('set-cookie')
       assert.match(setCookie || '', /HttpOnly/i)
+      assert.doesNotMatch(setCookie, /Max-Age=|Expires=/i)
+      const sessionToken = jwt.decode(setCookie.split(';')[0].slice('token='.length))
+      assert.equal(sessionToken.exp - sessionToken.iat, 86400)
       const cookie = setCookie.split(';')[0]
       const profile = await request('/auth/me', { headers: { Cookie: cookie } })
       assert.equal(profile.status, 200)
@@ -50,6 +54,21 @@ async function run() {
       const admin = await request('/admin/stats/users?year=2026', { headers: { Cookie: cookie } })
       assert.equal(admin.status, role === 'admin' ? 200 : 403)
       check(`${role}: admin permission enforced`)
+      const remembered = await login(phone, password, true)
+      assert.equal(remembered.status, 200)
+      const rememberedCookie = remembered.headers.get('set-cookie')
+      assert.match(rememberedCookie, /Max-Age=2592000/i)
+      assert.match(rememberedCookie, /Expires=/i)
+      assert.match(rememberedCookie, /HttpOnly/i)
+      const rememberedToken = jwt.decode(rememberedCookie.split(';')[0].slice('token='.length))
+      assert.equal(rememberedToken.exp - rememberedToken.iat, 30 * 86400)
+      assert.equal((await request('/auth/me', { headers: { Cookie: rememberedCookie.split(';')[0] } })).status, 200)
+      check(`${role}: remember me persists cookie and token for 30 days`)
+      const sessionOnly = await login(phone, password, false)
+      assert.equal(sessionOnly.status, 200)
+      assert.doesNotMatch(sessionOnly.headers.get('set-cookie'), /Max-Age=|Expires=/i)
+      assert.equal((await login(phone, password, 'false')).status, 422)
+      check(`${role}: unchecking returns to session cookie; malformed remember flag rejected`)
       const logout = await request('/auth/logout', { method: 'POST', headers: { Cookie: cookie } })
       assert.equal(logout.status, 200)
       assert.match(logout.headers.get('set-cookie') || '', /token=;/)

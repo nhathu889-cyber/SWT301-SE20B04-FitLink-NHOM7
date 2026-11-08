@@ -1,6 +1,6 @@
 // src/pages/admin/AdminPayouts.jsx
 import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import SidebarAdmin from "@/components/SidebarAdmin";
 import {
@@ -158,7 +158,7 @@ export default function AdminPayouts() {
       <main className="flex-1 p-6 text-white">
         {/* Header */}
         <div className="mb-5 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">💳 Payout Requests</h1>
+          <div><h1 className="text-2xl font-bold text-slate-100">PT Withdrawals</h1><p className="mt-2 text-sm text-slate-400">For student transfers, open <Link to="/admin-transactions" className="font-semibold text-orange-400 underline">Payment Confirmations</Link>.</p></div>
           <div className="flex items-center gap-2">
             <select
               className="rounded-md bg-white/5 border border-white/10 px-3 py-2 text-sm text-white"

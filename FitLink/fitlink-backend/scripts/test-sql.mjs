@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto'
 import { sequelize } from '../src/config/sql.js'
 import User from '../src/models/sql/User.js'
 import Package from '../src/models/sql/Package.js'
+import Transaction from '../src/models/sql/Transaction.js'
 import Booking from '../src/models/sql/Booking.js'
 import StudentPackage from '../src/models/sql/StudentPackage.js'
 import Session from '../src/models/sql/Session.js'
@@ -71,6 +72,23 @@ test('all SQL models match the live SQL Server schema', async () => {
     const { default: model } = await import(`../src/models/sql/${file}`)
     await model.findAll({ limit: 1 })
   }
+})
+
+test('SQL gym ticket stores gym details and payment without a PT; rollback leaves no fixtures', async () => {
+  const transaction = await sequelize.transaction()
+  try {
+    const options = { transaction }
+    const student = await User.create({ name: 'Self training SQL test', role: 'student' }, options)
+    const pkg = await Package.create({ name: `Self training ${randomUUID()}`, ptId: null, gymName: 'Test Gym', gymAddress: 'Test address', price: 120000, totalSessions: 1, sessionDurationMin: 0, durationDays: 30, visibility: 'public' }, options)
+    const payment = await Transaction.create({ studentId: student.id, packageId: pkg.id, ptId: null, bookingId: null, amount: pkg.price, method: 'bank_transfer', status: 'paid' }, options)
+    const enrollment = await StudentPackage.create({ studentId: student.id, ptId: null, packageId: pkg.id, transactionId: payment.id, totalSessions: 12, startDate: new Date(), endDate: new Date(Date.now() + 30 * 86400000) }, options)
+    const [hydrated] = sqlResponse(await hydrateStudentPackages([enrollment], options))
+    assert.equal(hydrated.package.name, pkg.name)
+    assert.equal(hydrated.ptId, null)
+    assert.equal(Number(hydrated.transaction.amount), 120000)
+    assert.deepEqual(hydrated.sessions, [])
+    assert.equal(await Booking.count({ where: { packageId: pkg.id }, ...options }), 0)
+  } finally { await transaction.rollback() }
 })
 
 test('SQL lifecycle: enrollment, schedule, wallet, relations and chat persist; rollback leaves no fixtures', async () => {

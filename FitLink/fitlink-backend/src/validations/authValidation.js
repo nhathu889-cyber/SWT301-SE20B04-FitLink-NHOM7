@@ -68,8 +68,8 @@ const registerByPhone = async (req, res, next) => {
 }
 
 const login = async (req, res, next) => {
-  console.log('req.body:', req.body)
   const correctCondition = Joi.object({
+    rememberMe: Joi.boolean().strict().default(false),
     phone: phoneField,
     password: Joi.string()
       .trim()
@@ -83,10 +83,8 @@ const login = async (req, res, next) => {
   })
   try {
     req.body = await correctCondition.validateAsync(req.body, { abortEarly: false })
-    console.log('VALIDATION')
     next()
   } catch (error) {
-    console.log(error);
     res.status(StatusCodes.UNPROCESSABLE_ENTITY).json({
       errors: new Error(error).message
     })

@@ -96,7 +96,20 @@ function AddressAutocomplete({ onSelect, placeholder = "Nhập địa chỉ đ�
 
 const isNum = (n) => typeof n === "number" && !Number.isNaN(n);
 const isValidWgs84 = (lng, lat) =>
-  isNum(lng) && isNum(lat) && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
+  isNum(lng) && isNum(lat) && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90 && !(lng === 0 && lat === 0);
+
+async function reverseGeocode(lng, lat) {
+  if (!GEOAPIFY_KEY) return "";
+  const url = new URL("https://api.geoapify.com/v1/geocode/reverse");
+  url.searchParams.set("lat", String(lat));
+  url.searchParams.set("lon", String(lng));
+  url.searchParams.set("format", "json");
+  url.searchParams.set("apiKey", GEOAPIFY_KEY);
+  const response = await fetch(url);
+  if (!response.ok) return "";
+  const data = await response.json();
+  return data?.results?.[0]?.formatted || "";
+}
 
 export default function Step2Location({ student, pt, onBack, onNext }) {
   const { state, set } = useBooking();
@@ -158,9 +171,15 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
           const [lng0, lat0] = point.coordinates.map(Number);
           if (isValidWgs84(lng0, lat0)) {
             setSavedLocation({ lng: lng0, lat: lat0 });
-            setAddr("Địa chỉ mặc định");
+            setAddr(`${lat0.toFixed(6)}, ${lng0.toFixed(6)}`);
             setLng(String(lng0));
             setLat(String(lat0));
+            try {
+              const formattedAddress = await reverseGeocode(lng0, lat0);
+              if (formattedAddress) setAddr(formattedAddress);
+            } catch { /* Keep the coordinates visible if reverse geocoding is unavailable. */ }
+          } else if (lng0 === 0 && lat0 === 0) {
+            setSaveMsg("Địa chỉ mặc định đang có tọa độ 0,0. Hãy tìm địa chỉ hoặc dùng vị trí hiện tại để cập nhật.");
           }
         }
       } catch (err) {
@@ -228,10 +247,10 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
 
   // Bật Chip/Next khi đã có savedLocation + đã chọn mode
   const enableChips = !!savedLocation;
-  const canNext = state.mode === "atPtGym" ? !!pt?.primaryGym : !!state.mode && !!savedLocation && (state.mode !== "atClient" || (Number.isFinite(distanceKm) && state.inRange));
+  const canNext = state.mode === "atPtGym" ? !!pt?.primaryGym : !!state.mode && !!savedLocation && Number.isFinite(distanceKm) && state.inRange;
 
   useEffect(() => {
-    if (state.mode !== "atClient") return;
+    if (!['atClient', 'atOtherGym'].includes(state.mode)) return;
     if (!Number.isFinite(distanceKm)) {
       setTravelFee(null);
       set({ travelFee: null, inRange: false });
@@ -282,9 +301,14 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
       }
 
     } else if (mode === "atOtherGym") {
-      // Không tính phí ở đây
-      setTravelFee(null);
-      set({ mode, otherGymAddress: payload, clientAddress: null });
+      try {
+        const fee = calculateTravelFee(Number(distanceKm || 0), Number(feePerKm || 0), Number(freeRadiusKm || 0), Number(maxTravelKm || Infinity));
+        setTravelFee(fee);
+        set({ mode, otherGymAddress: payload, clientAddress: null, travelFee: fee });
+      } catch (err) {
+        setTravelFee(null);
+        toast.error(err?.message || "Địa điểm vượt quá phạm vi PT hỗ trợ.");
+      }
     } else if (mode === "atPtGym") {
       // Không tính phí, reset hiển thị phí (nếu có)
       setTravelFee(null);
@@ -292,9 +316,10 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
     }
   };
 
-  const center = savedLocation
-    ? { lat: savedLocation.lat, lng: savedLocation.lng }
-    : ptCenter;
+  const center = useMemo(() => savedLocation
+    ? { lat: savedLocation.lat, lng: savedLocation.lng, fullAddress: addr }
+    : { ...ptCenter, fullAddress: pt?.primaryGym?.address || pt?.primaryGym?.name || "Địa điểm tập của PT" },
+  [savedLocation, addr, ptCenter, pt?.primaryGym?.address, pt?.primaryGym?.name]);
 
   return (
     <div className="space-y-4">
@@ -306,7 +331,7 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
       )}
 
       {/* B1: tải default location */}
-      {state.mode === "atClient" && !canNext && (
+      {["atClient", "atOtherGym"].includes(state.mode) && !canNext && (
         <p className="text-sm text-amber-300">Cần xác định được quãng đường trong phạm vi di chuyển của PT để tiếp tục. Bạn có thể chọn tập tại gym PT.</p>
       )}
       {loadingDefault && <div className="text-sm text-neutral-400">Đang tải vị trí mặc định…</div>}
@@ -387,7 +412,7 @@ export default function Step2Location({ student, pt, onBack, onNext }) {
           </div>
 
           <MapD center={center} ptLocation={ptCenter} />
-          {state.mode === "atClient" && travelFee !== null && (
+          {["atClient", "atOtherGym"].includes(state.mode) && travelFee !== null && (
             <div className="mt-2 rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-gray-200">
               <div className="font-medium">Phí di chuyển ước tính</div>
               <div className="mt-1">

@@ -1,13 +1,14 @@
 // src/pages/booking/Step5Preview.jsx
 import { useMemo, useState } from "react";
-import axios from "@/api/axiosClient";
+import { useNavigate } from 'react-router-dom'
 import { useBooking } from "@/contexts/BookingContext";
-import { initStudentPackageCheckout, payTransaction } from "@/services/paymentService";
+import { initStudentPackageCheckout } from "@/services/paymentService";
 
 const slotLabel = (s) => (s ? `${s.start}–${s.end}` : "—");
 const fmtVND = (n) => (typeof n === "number" ? n.toLocaleString("vi-VN") : "0");
 
 export default function Step5Preview({ pt, student, onBack }) {
+  const navigate = useNavigate()
   const { state } = useBooking();
   const [showPreview, setShowPreview] = useState(false);
   const [err, setErr] = useState("");
@@ -138,12 +139,9 @@ export default function Step5Preview({ pt, student, onBack }) {
     setSubmitting(true);
     try {
       const initRes = await initStudentPackageCheckout(buildPayload());
-      const { transactionId } = initRes?.data || {};
-      if (!transactionId) throw new Error("Không tạo được giao dịch.");
-      const payRes = await payTransaction(transactionId);
-      const checkoutUrl = payRes?.data?.checkoutUrl;
-      if (!checkoutUrl) throw new Error("Không lấy được link thanh toán.");
-      window.location.href = checkoutUrl;
+      const { bookingId } = initRes?.data || {};
+      if (!bookingId) throw new Error("Không gửi được yêu cầu đặt lịch.");
+      navigate('/my-bookings?request=sent');
     } catch (e) {
       console.error(e);
       setErr(e?.response?.data?.message || e.message || "Có lỗi khi tạo thanh toán.");
@@ -261,7 +259,7 @@ export default function Step5Preview({ pt, student, onBack }) {
             disabled={!canSubmit || submitting}
             className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 transition shadow-[0_6px_18px_rgba(220,38,38,0.3)]"
           >
-            {submitting ? "Đang chuyển đến cổng thanh toán..." : "Tiếp tục thanh toán"}
+            {submitting ? "Đang gửi yêu cầu..." : "Gửi yêu cầu đặt lịch"}
           </button>
         </div>
       </div>

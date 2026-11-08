@@ -6,6 +6,7 @@ import {
 } from "react-icons/fa";
 import { logout } from "@/services/authService";
 import { toast } from "react-toastify";
+import { useAuth } from "@/contexts/AuthProvider";
 
 function SideItem({ to, icon: Icon, label, onClick, collapsed }) {
   return (
@@ -32,10 +33,12 @@ export default function PTSidebar({
   onToggleCollapse
 }) {
   const navigate = useNavigate();
+  const { setUser } = useAuth();
 
   const handleClickLogout = async () => {
     try {
       await logout();
+      setUser(null);
       toast.success("Logout successful!");
       navigate("/login");
     } catch (error) {
@@ -93,6 +96,7 @@ export default function PTSidebar({
           <SideItem to="/pt/materials" icon={FaFileAlt} label="Materials" onClick={onClose} collapsed={collapsed} />
           <SideItem to="/pt/profile" icon={FaUser} label="Profile" onClick={onClose} collapsed={collapsed} />
           <SideItem to="/pt/schedule" icon={FaCalendarAlt} label="Schedule" onClick={onClose} collapsed={collapsed} />
+          <SideItem to="/pt/bookings" icon={FaCalendarAlt} label="Booking requests" onClick={onClose} collapsed={collapsed} />
           <SideItem to="/pt/feedback" icon={FaDumbbell} label="Feedback" onClick={onClose} collapsed={collapsed} />
           <SideItem to="/pt/chat" icon={FaComments} label="Messages" onClick={onClose} collapsed={collapsed} />
           <SideItem to="/pt/wallet" icon={FaWallet} label="Wallet" onClick={onClose} collapsed={collapsed} />

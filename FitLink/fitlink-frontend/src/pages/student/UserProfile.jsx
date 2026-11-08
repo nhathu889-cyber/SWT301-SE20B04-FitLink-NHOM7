@@ -6,6 +6,7 @@ import MainLayout from '@/layouts/MainLayout';
 import { userService } from "@/services";
 import { toast } from 'react-toastify';
 import { useAuth } from '@/contexts/AuthProvider';
+import StudentProgressPanel from '@/components/student/StudentProgressPanel';
 
 const profileSchema = yup.object().shape({
   name: yup
@@ -181,7 +182,7 @@ export default function UserProfile() {
           {/* Tabs */}
           <div className="bg-white rounded-lg shadow-md">
             <div className="border-b border-gray-200">
-              <nav className="flex space-x-8 px-6">
+              <nav className="flex overflow-x-auto space-x-8 px-6">
                 <button
                   onClick={() => setActiveTab('profile')}
                   className={`py-4 px-1 border-b-2 font-medium text-sm ${
@@ -202,6 +203,12 @@ export default function UserProfile() {
                 >
                   Đổi mật khẩu
                 </button>
+                {user?.role === 'student' && <button
+                  onClick={() => setActiveTab('progress')}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'progress' ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}`}
+                >
+                  Tiến độ tập luyện
+                </button>}
               </nav>
             </div>
 
@@ -324,6 +331,8 @@ export default function UserProfile() {
                   </div>
                 </form>
               )}
+
+              {activeTab === 'progress' && user?.role === 'student' && <StudentProgressPanel />}
 
               {activeTab === 'password' && user?.hasPassword === false && (
                 <p className="text-gray-600">Tài khoản này chưa có mật khẩu FitLink. Nếu bạn đăng nhập bằng Google, hãy tiếp tục dùng nút đăng nhập Google. Mật khẩu Google được quản lý trong tài khoản Google.</p>

@@ -2,8 +2,8 @@ import jwt from 'jsonwebtoken'
 import { env } from '~/config/environment'
 import crypto from 'crypto'
 
-export const genarateAccessToken = (payload) => {
-  return jwt.sign(payload, env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
+export const genarateAccessToken = (payload, expiresIn = '1d') => {
+  return jwt.sign(payload, env.ACCESS_TOKEN_SECRET, { expiresIn })
 }
 
 

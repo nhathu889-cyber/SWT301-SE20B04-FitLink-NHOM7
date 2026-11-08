@@ -28,13 +28,26 @@ const loginWithGoogle = async (req, res) => {
       return res.status(StatusCodes.BAD_REQUEST).json({ message: 'Thiếu idToken' })
     }
 
-    // Verify token
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: env.GG_CLIENT_ID
-    })
+    // Verify token. Keep Google/network failures separate from invalid credentials.
+    let ticket
+    try {
+      ticket = await client.verifyIdToken({
+        idToken,
+        audience: env.GG_CLIENT_ID
+      })
+    } catch (verificationError) {
+      console.error('Google token verification failed:', verificationError)
+      const googleUnavailable = /verification certificates|ECONNREFUSED|ETIMEDOUT|ENOTFOUND/i.test(verificationError.message || '')
+      return res.status(googleUnavailable ? StatusCodes.SERVICE_UNAVAILABLE : StatusCodes.UNAUTHORIZED).json({
+        message: googleUnavailable
+          ? 'Máy chủ không kết nối được dịch vụ xác minh của Google. Hãy kiểm tra cấu hình mạng/proxy của backend.'
+          : 'Token Google không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.'
+      })
+    }
     const payload = ticket.getPayload()
-    console.log('payload: ', payload)
+    if (!payload?.email || !payload.sub) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Tài khoản Google không hợp lệ.' })
+    }
 
     // payload chứa: email, name, picture, sub (unique Google user id)
     const { email, name, picture, sub } = payload
@@ -52,6 +65,13 @@ const loginWithGoogle = async (req, res) => {
         googleId: sub
       })
       await user.save()
+    } else if (!user.googleId) {
+      // Link an existing phone account when its verified Google email matches.
+      user.googleId = sub
+      if (!user.avatar && picture) user.avatar = picture
+      await user.save()
+    } else if (user.googleId !== sub) {
+      return res.status(StatusCodes.CONFLICT).json({ message: 'Email này đã được liên kết với một tài khoản Google khác.' })
     }
 
     // Kiểm tra tài khoản bị khóa
@@ -79,8 +99,8 @@ const loginWithGoogle = async (req, res) => {
 
     res.json({ message: 'Google login successful', user: jwtPayload })
   } catch (err) {
-    console.error(err)
-    res.status(500).json({ message: 'Google login failed', error: err.message })
+    console.error('Google login failed after token verification:', err)
+    res.status(500).json({ message: 'Không thể hoàn tất đăng nhập Google do lỗi máy chủ.' })
   }
 }
 
@@ -260,7 +280,7 @@ export const registerByPhoneConfirm = async (req, res) => {
 
 const login = async (req, res) => {
   try {
-    const { phone, password } = req.body
+    const { phone, password, rememberMe = false } = req.body
     const normalizedPhone = normalizePhone(phone)
 
     let currentUser = null
@@ -304,12 +324,13 @@ const login = async (req, res) => {
       email: currentUser.email
     }
 
-    const accessToken = genarateAccessToken(payload)
+    const accessToken = genarateAccessToken(payload, rememberMe ? '30d' : '1d')
 
     res.cookie('token', accessToken, {
       httpOnly: true,
       secure: env.IS_SERCURE_COOKIE,
-      sameSite: env.COOKIE_SAMESITE || 'lax'
+      sameSite: env.COOKIE_SAMESITE || 'lax',
+      ...(rememberMe ? { maxAge: 30 * 24 * 60 * 60 * 1000 } : {})
     })
 
     return res.json({ message: 'Login successful', user: payload })

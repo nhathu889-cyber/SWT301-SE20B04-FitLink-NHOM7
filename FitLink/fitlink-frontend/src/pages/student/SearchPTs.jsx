@@ -5,6 +5,11 @@ import { searchPTs } from "@/services/searchService";
 import { PackageTagLabels } from "@/domain/enum";
 import MainLayout from "@/layouts/MainLayout";
 
+const toLocalDateTimeInput = (date) => {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+};
+
 const modeLabels = {
   atPtGym: "Tại PT's Gym",
   atClient: "Tại nhà khách",
@@ -128,7 +133,7 @@ export default function SearchPTs() {
       setError("");
 
       const params = {
-        availableAt,
+        availableAt: availableAt ? new Date(availableAt).toISOString() : "",
         sortBy,
         specialty: goal,
         page,
@@ -364,6 +369,20 @@ export default function SearchPTs() {
                   />
                 </div>
 
+                <label className="flex flex-col gap-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  Available at
+                  <input
+                    type="datetime-local"
+                    min={toLocalDateTimeInput(new Date())}
+                    value={availableAt}
+                    onChange={(event) => {
+                      setAvailableAt(event.target.value);
+                      setPage(1);
+                    }}
+                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-normal normal-case tracking-normal text-slate-800 shadow-inner focus:border-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  />
+                </label>
+
                 <select
                   value={goal}
                   onChange={(e) => {
@@ -405,6 +424,7 @@ export default function SearchPTs() {
                   <option value="best">Best match</option>
                   <option value="rating">Highest rating</option>
                   <option value="price">Lowest price</option>
+                  {coords && <option value="distance">Nearest</option>}
                 </select>
 
                 <div className="ml-auto flex items-center gap-3 text-xs text-slate-500">

@@ -91,11 +91,11 @@ export default function SessionDrawer({
 
   const onDelete = async () => {
     if (!session?._id) return;
-    if (!confirm("Xoá buổi này?")) return;
+    if (!confirm("Hủy buổi tập này và mở lại khung giờ?")) return;
     try {
       setLoading(true);
       await deleteSession(session._id);
-      toast.success("Đã xoá");
+      toast.success("Đã hủy buổi tập và giải phóng khung giờ.");
       onChanged?.();
       onClose?.();
     } catch (e) {
@@ -383,19 +383,12 @@ export default function SessionDrawer({
               >
                 Missed
               </ActionBtn>
-              <ActionBtn
-                disabled={loading}
-                onClick={() => setStatus("cancelled")}
-              >
-                Cancelled
-              </ActionBtn>
-
               <button
                 className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-sm text-red-300 hover:bg-red-500/20 disabled:opacity-60"
                 disabled={loading}
                 onClick={onDelete}
               >
-                Deleted
+                Cancel session
               </button>
             </div>
           </div>
